@@ -28,9 +28,9 @@ export async function GET(
         { error: 'Key agent not found' },
         { status: 404 }
       )
-    }
+          }
 
-    return NextResponse.json(agent)
+          return NextResponse.json(agent)
     
   } catch (error) {
     console.error('Error fetching key agent:', error)

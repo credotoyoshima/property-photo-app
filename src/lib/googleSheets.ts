@@ -152,7 +152,7 @@ export async function getPropertyById(propertyId: number) {
     if (rows.length === 0) {
       return null
     }
-
+    
     const row = rows[0]
     
     // 数値変換のためのヘルパー関数

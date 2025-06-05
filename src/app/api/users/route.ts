@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       last_login: user.last_login,
       is_active: user.is_active
     }))
-
+    
     return NextResponse.json({ users: safeUsers })
   } catch (error) {
     console.error('Error fetching users:', error)

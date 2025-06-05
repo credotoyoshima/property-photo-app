@@ -84,7 +84,7 @@ export default function ModernHeader({
     
     // デバウンス: 300ms後に検索実行
     searchTimeoutRef.current = setTimeout(() => {
-      onSearch(value)
+    onSearch(value)
     }, 300)
   }
   
@@ -141,49 +141,49 @@ export default function ModernHeader({
 
           {/* 検索バー */}
           {showSearch && (
-            <div className="flex-1 max-w-xl mx-3 mr-2">
-              <form onSubmit={handleSearchSubmit} className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg 
-                    className="h-5 w-5 text-gray-400" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-                    />
-                  </svg>
-                </div>
-                <Input
-                  type="text"
+          <div className="flex-1 max-w-xl mx-3 mr-2">
+            <form onSubmit={handleSearchSubmit} className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg 
+                  className="h-5 w-5 text-gray-400" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                  />
+                </svg>
+              </div>
+              <Input
+                type="text"
                   placeholder="ワード検索..."
-                  value={localSearchQuery}
-                  onChange={handleSearchChange}
+                value={localSearchQuery}
+                onChange={handleSearchChange}
                   className="pl-10 pr-4 py-2 w-full bg-gray-50/50 border-gray-200 rounded-xl focus:bg-white focus:ring-1 focus:border-blue-400 focus:outline-none focus-visible:outline-none outline-none transition-all duration-150"
-                  style={{ 
-                    outline: 'none',
-                    boxShadow: 'none',
-                    border: '1px solid rgb(229 231 235)', // gray-200と同じ色
-                    WebkitAppearance: 'none',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.outline = 'none'
+                style={{ 
+                  outline: 'none',
+                  boxShadow: 'none',
+                  border: '1px solid rgb(229 231 235)', // gray-200と同じ色
+                  WebkitAppearance: 'none',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+                onFocus={(e) => {
+                  e.target.style.outline = 'none'
                     e.target.style.boxShadow = '0 0 0 1px rgba(0, 61, 117, 0.3)'
                     e.target.style.border = '1px solid rgba(0, 61, 117, 0.5)'
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.outline = 'none'
-                    e.target.style.boxShadow = 'none'
-                    e.target.style.border = '1px solid rgb(229 231 235)'
-                  }}
-                />
-              </form>
-            </div>
+                }}
+                onBlur={(e) => {
+                  e.target.style.outline = 'none'
+                  e.target.style.boxShadow = 'none'
+                  e.target.style.border = '1px solid rgb(229 231 235)'
+                }}
+              />
+            </form>
+          </div>
           )}
 
           {/* スペーサー（検索バーが非表示の場合） */}
@@ -209,15 +209,15 @@ export default function ModernHeader({
                 </button>
               ) : (
                 // マップページの3段階ボタン
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleToggle}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToggle}
                   className="w-16 h-8 px-2 py-1 text-xs font-medium transition-all duration-200 hover:bg-gray-100 active:bg-gray-200 focus:ring-0 focus:outline-none rounded-lg flex-shrink-0"
                   style={filterState !== 0 ? { backgroundColor: '#003D75', color: 'white' } : { border: '1px solid rgb(229 231 235)' }}
                 >
                   {getFilterText()}
-                </Button>
+            </Button>
               )
             )}
 

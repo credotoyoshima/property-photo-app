@@ -85,9 +85,9 @@ export function useAuth() {
       
       // 現在の保存場所に応じて更新
       if (user.rememberMe) {
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser))
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser))
       } else {
-        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser))
+      sessionStorage.setItem('currentUser', JSON.stringify(updatedUser))
       }
     }
   }

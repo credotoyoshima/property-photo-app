@@ -5,7 +5,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="h-screen overflow-hidden">
-      {children}
+        {children}
     </div>
   )
 } 

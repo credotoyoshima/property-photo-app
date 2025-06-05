@@ -55,10 +55,10 @@ export async function PATCH(
       const user = await getUserById(tokenResult.userId)
       
       if (!user) {
-        return NextResponse.json(
+      return NextResponse.json(
           { error: 'User not found' },
           { status: 401 }
-        )
+      )
       }
 
       rented_by = user.display_name
