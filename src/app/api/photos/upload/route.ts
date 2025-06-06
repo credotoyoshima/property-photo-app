@@ -1,58 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { uploadFileToGoogleDrive, ensureFolderExists, generateFolderName } from '@/lib/googleDrive'
+import { uploadMultipleImagesToDrive, getImagesFromPropertyFolder } from '@/lib/googleDrive'
 
+// 複数画像のアップロード
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    
+    // フォームデータから必要な情報を取得
     const propertyName = formData.get('propertyName') as string
     const roomNumber = formData.get('roomNumber') as string
-    const photoIndex = formData.get('photoIndex') as string
+    const photographerName = formData.get('photographerName') as string
+    const gpsLat = formData.get('gpsLat') as string
+    const gpsLng = formData.get('gpsLng') as string
     
-    if (!file || !propertyName || !roomNumber) {
+    if (!propertyName || !roomNumber || !photographerName) {
       return NextResponse.json(
         { error: '必要なパラメータが不足しています' },
         { status: 400 }
       )
     }
+
+    // アップロードされたファイルを取得
+    const files: File[] = []
+    const fileEntries = Array.from(formData.entries()).filter(([key]) => key.startsWith('file'))
     
-    // ファイルをBufferに変換
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    
-    // フォルダ名を生成
-    const folderName = generateFolderName(propertyName, roomNumber)
-    
-    // フォルダを作成または取得
-    const folderId = await ensureFolderExists(folderName)
-    
-    // ファイル名を生成（タイムスタンプ付き）
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const fileExtension = file.name.split('.').pop() || 'jpg'
-    const fileName = photoIndex 
-      ? `photo_${photoIndex}_${timestamp}.${fileExtension}`
-      : `photo_${timestamp}.${fileExtension}`
-    
+    for (const [, value] of fileEntries) {
+      if (value instanceof File) {
+        files.push(value)
+      }
+    }
+
+    if (files.length === 0) {
+      return NextResponse.json(
+        { error: 'アップロードするファイルがありません' },
+        { status: 400 }
+      )
+    }
+
+    // GPS位置情報の準備
+    let gpsLocation: { latitude: number, longitude: number } | undefined
+    if (gpsLat && gpsLng) {
+      gpsLocation = {
+        latitude: parseFloat(gpsLat),
+        longitude: parseFloat(gpsLng),
+      }
+    }
+
     // Google Driveにアップロード
-    const fileId = await uploadFileToGoogleDrive(
-      buffer,
-      fileName,
-      file.type,
-      folderId
+    const result = await uploadMultipleImagesToDrive(
+      files,
+      propertyName,
+      roomNumber,
+      photographerName,
+      gpsLocation
     )
-    
+
     return NextResponse.json({
       success: true,
-      fileId,
-      fileName,
-      folderName,
-      message: '写真をGoogle Driveにアップロードしました'
+      summary: result.summary,
+      results: result.results,
     })
-    
+
   } catch (error) {
-    console.error('Photo upload error:', error)
+    console.error('Upload API error:', error)
     return NextResponse.json(
-      { error: 'アップロードに失敗しました' },
+      { 
+        error: 'アップロードに失敗しました',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// 物件フォルダの画像一覧を取得
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const propertyName = searchParams.get('propertyName')
+    const roomNumber = searchParams.get('roomNumber')
+
+    if (!propertyName || !roomNumber) {
+      return NextResponse.json(
+        { error: '物件名と部屋番号が必要です' },
+        { status: 400 }
+      )
+    }
+
+    const images = await getImagesFromPropertyFolder(propertyName, roomNumber)
+
+    return NextResponse.json({
+      success: true,
+      images,
+      count: images.length,
+    })
+
+  } catch (error) {
+    console.error('Get images API error:', error)
+    return NextResponse.json(
+      { 
+        error: '画像一覧の取得に失敗しました',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
