@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { FullScreenLoading } from '@/components/ui/loading'
 import { AuthGuard, UserInfo } from '@/components/AuthGuard'
 import { useAuth } from '@/hooks/useAuth'
+import { ContinuousCamera } from '@/components/ContinuousCamera'
 
 interface Property {
   id: number
@@ -44,6 +45,8 @@ export default function PropertyDetailPage({ params }: Props) {
   const [isEditingMemo, setIsEditingMemo] = useState(false)
   const [editedMemo, setEditedMemo] = useState('')
   const [isSavingMemo, setIsSavingMemo] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
+  const [uploadCount, setUploadCount] = useState(0)
 
   // paramsを解決
   useEffect(() => {
@@ -124,21 +127,16 @@ export default function PropertyDetailPage({ params }: Props) {
   }
 
   const handleLaunchCamera = () => {
-    // スマホのデフォルトカメラを起動
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.capture = 'environment' // 背面カメラを使用
-    input.click()
-    
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        // ここで撮影した画像を処理
-        console.log('Photo taken:', file.name)
-        alert('写真が撮影されました。実際の実装では画像アップロード処理を行います。')
-      }
-    }
+    setShowCamera(true)
+  }
+
+  const handleCameraClose = () => {
+    setShowCamera(false)
+  }
+
+  const handlePhotoUploaded = (result: { fileName: string; folderName: string }) => {
+    setUploadCount(prev => prev + 1)
+    console.log('Photo uploaded:', result.fileName, 'to folder:', result.folderName)
   }
 
   const handleEditMemo = () => {
@@ -211,6 +209,14 @@ export default function PropertyDetailPage({ params }: Props) {
 
   return (
     <AuthGuard>
+      {showCamera && property && (
+        <ContinuousCamera
+          propertyName={property.property_name}
+          roomNumber={property.room_number}
+          onClose={handleCameraClose}
+          onPhotoUploaded={handlePhotoUploaded}
+        />
+      )}
       <div className="px-4 sm:px-0 max-w-4xl mx-auto">
         {/* ヘッダー */}
         <div className="flex items-center justify-between mb-6">
@@ -417,7 +423,7 @@ export default function PropertyDetailPage({ params }: Props) {
                 variant="outline"
                 className="w-full"
               >
-                📷 写真撮影
+                📷 写真撮影 {uploadCount > 0 && `(${uploadCount}枚撮影済み)`}
               </Button>
               <Button
                 onClick={() => handleStatusUpdate(property.status === '未撮影' ? '撮影済み' : '未撮影')}
