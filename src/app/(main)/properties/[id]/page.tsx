@@ -123,42 +123,7 @@ export default function PropertyDetailPage({ params }: Props) {
     window.open(url, '_blank')
   }
 
-  const handleLaunchCamera = () => {
-    // デバイスの種類を判定
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    const isAndroid = /Android/.test(navigator.userAgent)
-    
-    if (isMobile) {
-      // スマホの場合、ネイティブカメラアプリを起動
-      if (isIOS) {
-        // iOSの場合 - カメラアプリを直接起動
-        window.open('camera://open', '_system')
-      } else if (isAndroid) {
-        // Androidの場合 - Intentを使用してカメラアプリを起動
-        const cameraIntent = 'intent://open#Intent;action=android.media.action.IMAGE_CAPTURE;end'
-        window.open(cameraIntent, '_system')
-      }
-      
-      // メッセージを表示
-      alert('スマホのカメラアプリが起動されます。撮影後、写真はスマホのカメラロールに保存されます。')
-    } else {
-      // デスクトップの場合は従来のWebカメラ機能を使用
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = 'image/*'
-      input.capture = 'environment' // 背面カメラを使用
-      input.click()
-      
-      input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (file) {
-          console.log('Photo taken:', file.name)
-          alert('写真が撮影されました。実際の実装では画像アップロード処理を行います。')
-        }
-      }
-    }
-  }
+
 
   const handleEditMemo = () => {
     setEditedMemo(property?.memo || '')
@@ -424,19 +389,12 @@ export default function PropertyDetailPage({ params }: Props) {
           {/* アクション */}
           <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
             <h2 className="text-lg font-semibold mb-4">アクション</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Button
                 onClick={handleNavigate}
                 className="w-full"
               >
                 📍 ナビで案内
-              </Button>
-              <Button
-                onClick={handleLaunchCamera}
-                variant="outline"
-                className="w-full"
-              >
-                📷 写真撮影
               </Button>
               <Button
                 onClick={() => handleStatusUpdate(property.status === '未撮影' ? '撮影済み' : '未撮影')}
