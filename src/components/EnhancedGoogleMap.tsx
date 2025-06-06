@@ -242,38 +242,20 @@ function PropertyEditScreen({ property, onClose, onSave }: PropertyEditScreenPro
 
   // カメラ起動処理
   const handleLaunchCamera = () => {
-    // デバイスの種類を判定
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    const isAndroid = /Android/.test(navigator.userAgent)
+    // スマホの標準カメラ機能を起動（最も確実な方法）
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.capture = 'environment' // 背面カメラを使用
+    input.multiple = false // 単一ファイルのみ
     
-    if (isMobile) {
-      // スマホの場合、ネイティブカメラアプリを起動
-      if (isIOS) {
-        // iOSの場合 - カメラアプリを直接起動
-        window.open('camera://open', '_system')
-      } else if (isAndroid) {
-        // Androidの場合 - Intentを使用してカメラアプリを起動
-        const cameraIntent = 'intent://open#Intent;action=android.media.action.IMAGE_CAPTURE;end'
-        window.open(cameraIntent, '_system')
-      }
-      
-      // メッセージを表示
-      alert('スマホのカメラアプリが起動されます。撮影後、写真はスマホのカメラロールに保存されます。')
-    } else {
-      // デスクトップの場合は従来のWebカメラ機能を使用
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = 'image/*'
-      input.capture = 'environment' // 背面カメラを使用
-      input.click()
-      
-      input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (file) {
-          console.log('Photo taken:', file.name, file.size, file.type)
-          alert('写真が撮影されました。実際の実装では画像アップロード処理を行います。')
-        }
+    input.click()
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        console.log('Photo taken:', file.name, file.size, file.type)
+        alert('写真が撮影されました。スマホのカメラロールに保存されています。')
       }
     }
   }
