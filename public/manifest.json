@@ -1,7 +1,7 @@
 {
-  "name": "物件撮影管理アプリ",
-  "short_name": "物件撮影",
-  "description": "不動産物件の撮影業務を効率化するPWAアプリ",
+  "name": "Credo Maps",
+  "short_name": "Credo Maps",
+  "description": "撮影システム v3.0",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

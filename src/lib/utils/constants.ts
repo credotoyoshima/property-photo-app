@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
-  name: '物件撮影管理アプリ',
-  version: '1.0.0',
-  description: '不動産物件の撮影業務を効率化するPWAアプリ',
+  name: 'Credo Maps',
+  version: '3.0.0',
+  description: '撮影システム v3.0',
 } as const
 
 export const PROPERTY_STATUS = {

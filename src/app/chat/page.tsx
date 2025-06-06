@@ -249,22 +249,28 @@ export default function ChatPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {/* ModernHeader を使用 */}
-      <ModernHeader
-        onSearch={handleSearch}
-        searchQuery={searchQuery}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-        onToggleFilter={() => {}}
-        isFilterOn={false}
-        showSearch={false}
-        showFilter={false}
-      />
+      <div className="flex-shrink-0">
+        <ModernHeader
+          onSearch={handleSearch}
+          searchQuery={searchQuery}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          onToggleFilter={() => {}}
+          isFilterOn={false}
+          showSearch={false}
+          showFilter={false}
+        />
+      </div>
 
       {/* メッセージエリア */}
-      <div className="flex-1 overflow-y-auto pb-footer-with-input">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto" 
+           style={{ 
+             height: 'calc(100vh - 60px - 80px - 80px)', // ヘッダー60px - 入力エリア80px - フッター80px
+             maxHeight: 'calc(100vh - 220px)'
+           }}>
+        <div className="max-w-4xl mx-auto px-4 py-4">
           {loading && messages.length === 0 ? (
             // スケルトンローディング表示
             <ChatSkeleton />
@@ -368,7 +374,7 @@ export default function ChatPage() {
       </div>
 
       {/* メッセージ入力エリア */}
-      <div className="fixed bottom-20 left-0 right-0 bg-white border-t shadow-lg">
+      <div className="flex-shrink-0 bg-white border-t shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center space-x-3">
             <Input
@@ -411,10 +417,12 @@ export default function ChatPage() {
       </div>
 
       {/* フッター */}
-      <ModernFooter
-        activeTab="chat"
-        onTabChange={handleTabChange}
-      />
+      <div className="flex-shrink-0">
+        <ModernFooter
+          activeTab="chat"
+          onTabChange={handleTabChange}
+        />
+      </div>
     </div>
   )
 } 
