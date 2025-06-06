@@ -124,19 +124,38 @@ export default function PropertyDetailPage({ params }: Props) {
   }
 
   const handleLaunchCamera = () => {
-    // スマホのデフォルトカメラを起動
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.capture = 'environment' // 背面カメラを使用
-    input.click()
+    // デバイスの種類を判定
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/.test(navigator.userAgent)
     
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        // ここで撮影した画像を処理
-        console.log('Photo taken:', file.name)
-        alert('写真が撮影されました。実際の実装では画像アップロード処理を行います。')
+    if (isMobile) {
+      // スマホの場合、ネイティブカメラアプリを起動
+      if (isIOS) {
+        // iOSの場合 - カメラアプリを直接起動
+        window.open('camera://open', '_system')
+      } else if (isAndroid) {
+        // Androidの場合 - Intentを使用してカメラアプリを起動
+        const cameraIntent = 'intent://open#Intent;action=android.media.action.IMAGE_CAPTURE;end'
+        window.open(cameraIntent, '_system')
+      }
+      
+      // メッセージを表示
+      alert('スマホのカメラアプリが起動されます。撮影後、写真はスマホのカメラロールに保存されます。')
+    } else {
+      // デスクトップの場合は従来のWebカメラ機能を使用
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.capture = 'environment' // 背面カメラを使用
+      input.click()
+      
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (file) {
+          console.log('Photo taken:', file.name)
+          alert('写真が撮影されました。実際の実装では画像アップロード処理を行います。')
+        }
       }
     }
   }
