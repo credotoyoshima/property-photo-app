@@ -792,7 +792,7 @@ function PropertyDetailCard({ propertyGroup, onClose, onEdit, onBackToProperty, 
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 pb-20">
+    <div className="fixed inset-x-0 bottom-0 z-50 pb-footer">
       {/* Background Overlay - カード上部のみカバー */}
       <div 
         className="absolute inset-x-0 top-0 bottom-0" 
@@ -1055,7 +1055,7 @@ function AgentDetailCard({ agent, properties, selectedPropertyIds, onClose, onPr
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 pb-20">
+    <div className="fixed inset-x-0 bottom-0 z-50 pb-footer">
       {/* Background Overlay - カード上部のみカバー */}
       <div 
         className="absolute inset-x-0 top-0 bottom-0" 

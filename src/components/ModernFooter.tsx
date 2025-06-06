@@ -105,9 +105,9 @@ export default function ModernFooter({ activeTab, onTabChange }: ModernFooterPro
   ]
 
   return (
-    <footer className="bg-white/95 backdrop-blur-md border-t border-gray-200/50 sticky bottom-0 z-50 shadow-lg">
+    <footer className="bg-white/95 backdrop-blur-md border-t border-gray-200/50 fixed bottom-0 left-0 right-0 z-50 shadow-lg" style={{ transform: 'translate3d(0, 0, 0)', willChange: 'auto' }}>
       <div className="px-3 sm:px-4">
-        <div className="flex items-center justify-around h-20 max-w-xl mx-auto">
+        <div className="flex items-start justify-around h-20 max-w-xl mx-auto pt-1.5">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id
             const isChat = tab.id === 'chat'
@@ -116,30 +116,35 @@ export default function ModernFooter({ activeTab, onTabChange }: ModernFooterPro
                 key={tab.id}
                 variant="ghost"
                 onClick={() => onTabChange(tab.id)}
-                className={`flex flex-col items-center space-y-1 p-3 w-20 h-16 rounded-xl transition-all duration-200 relative ${
-                  isActive
-                    ? ''
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                className={`flex flex-col items-center space-y-1 pt-1 px-3 pb-3 w-20 h-16 rounded-none transition-all duration-200 relative hover:bg-gray-50/50 ${
+                  isActive ? '' : 'text-gray-500 hover:text-gray-700'
                 }`}
-                style={isActive ? { 
-                  color: '#003D75',
-                  backgroundColor: 'rgba(0, 61, 117, 0.1)'
-                } : {}}
               >
-                <div className={`${isActive ? 'transform scale-110' : ''} relative`}>
+                <div className={`${isActive ? 'transform scale-110' : ''} relative transition-transform duration-200`}>
                   {tab.icon(isActive)}
                   {/* 未読バッジ */}
                   {isChat && hasUnread && (
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
                   )}
                 </div>
-                <span className={`text-xs font-medium ${
+                <span className={`text-xs font-medium transition-colors duration-200 ${
                   isActive ? '' : 'text-gray-500'
                 }`}
                 style={isActive ? { color: '#003D75' } : {}}
                 >
                   {tab.label}
                 </span>
+                
+                {/* アンダーバー */}
+                {isActive && (
+                  <div 
+                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 h-1 rounded-full transition-all duration-300 ease-out"
+                    style={{ 
+                      width: '32px',
+                      backgroundColor: '#003D75'
+                    }}
+                  />
+                )}
               </Button>
             )
           })}

@@ -263,7 +263,7 @@ export default function ChatPage() {
       />
 
       {/* メッセージエリア */}
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 overflow-y-auto pb-footer-with-input">
         <div className="max-w-4xl mx-auto px-4 py-6">
           {loading && messages.length === 0 ? (
             // スケルトンローディング表示

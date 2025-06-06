@@ -55,6 +55,12 @@
   }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    overflow-x: hidden;
+  }
+  
+  html {
+    overscroll-behavior: none;
   }
 }
 
@@ -161,5 +167,14 @@
   select:focus-visible {
     outline: none !important;
     box-shadow: none !important;
+  }
+
+  /* フッター対応のためのパディング */
+  .pb-footer {
+    padding-bottom: 5rem; /* 80px - フッターの高さ */
+  }
+  
+  .pb-footer-with-input {
+    padding-bottom: 10rem; /* 160px - フッター + 入力エリアの高さ */
   }
 }
