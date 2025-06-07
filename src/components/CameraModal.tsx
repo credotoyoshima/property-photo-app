@@ -70,15 +70,16 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // カメラストリーム開始
   const startCamera = async () => {
     try {
-      // 選択したカメラデバイスでストリーム取得
-      const constraints: MediaStreamConstraints = {
-        video: {
-          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+      // カメラストリーム取得: deviceId指定か、なければ背面カメラ(facingMode)でフォールバック
+      const videoConstraints: any = {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        facingMode: 'environment'
       }
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      if (selectedDeviceId) {
+        videoConstraints.deviceId = { exact: selectedDeviceId }
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints })
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
