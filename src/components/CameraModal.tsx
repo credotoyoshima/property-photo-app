@@ -92,6 +92,16 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }
 
+  // モーダルオープン時にカメラを開始／停止
+  useEffect(() => {
+    if (isOpen) {
+      startCamera()
+    } else {
+      stopCamera()
+    }
+    return () => stopCamera()
+  }, [isOpen])
+
   // モーダルオープン時に利用可能なビデオデバイスを取得
   useEffect(() => {
     if (isOpen) {
