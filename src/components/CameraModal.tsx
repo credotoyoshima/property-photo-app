@@ -67,30 +67,25 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
-  // iOSのPWA（スタンドアロン）環境かどうか判定
-  const [isPwaIos, setIsPwaIos] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const standalone = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches
-      const isIos = /iP(hone|od|ad)/.test(navigator.userAgent)
-      setIsPwaIos(standalone && isIos)
-    }
-  }, [])
-
   // カメラストリーム開始
   const startCamera = async () => {
     try {
-      // カメラストリーム取得: deviceId指定か、なければ背面カメラ(facingMode)でフォールバック
-      const videoConstraints: any = {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        facingMode: 'environment'
-      }
-      if (selectedDeviceId) {
+      // --- デバッグログ: デバイス列挙 ---
+      const allDevices = await navigator.mediaDevices.enumerateDevices()
+      const videoInputs = allDevices.filter(d => d.kind === 'videoinput')
+      console.log('[CameraModal] enumerateDevices -> videoInputs:', videoInputs)
+      // iOS PWAでは facingMode のみが有効になる場合があるため全デバイス選択不可時は facingMode で取得
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+      let videoConstraints: MediaTrackConstraints = { width: { ideal: 1920 }, height: { ideal: 1080 } }
+      if (!isIOS && selectedDeviceId && videoInputs.some(d => d.deviceId === selectedDeviceId)) {
         videoConstraints.deviceId = { exact: selectedDeviceId }
+      } else {
+        console.log('[CameraModal] Fallback to facingMode=environment')
+        videoConstraints.facingMode = 'environment'
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints })
+      const constraints: MediaStreamConstraints = { video: videoConstraints }
+      console.log('[CameraModal] getUserMedia constraints:', constraints)
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -102,16 +97,6 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
       alert('カメラにアクセスできません。ブラウザの設定を確認してください。')
     }
   }
-
-  // モーダルオープン時にカメラを開始／停止
-  useEffect(() => {
-    if (isOpen) {
-      startCamera()
-    } else {
-      stopCamera()
-    }
-    return () => stopCamera()
-  }, [isOpen])
 
   // モーダルオープン時に利用可能なビデオデバイスを取得
   useEffect(() => {
@@ -144,33 +129,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }
 
-  // ファイル入力から写真を取得する（PWAフォールバック用）
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return
-    const file = e.target.files[0]
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      const newPhoto: CapturedPhoto = {
-        id: `photo_${Date.now()}_${Math.random().toString(36).substr(2,9)}`,
-        dataUrl,
-        timestamp: new Date(),
-        selected: true
-      }
-      setCapturedPhotos(prev => [...prev, newPhoto])
-      setSelectedCount(prev => prev + 1)
-    }
-    reader.readAsDataURL(file)
-    e.target.value = ''
-  }
-
   // 写真撮影
   const capturePhoto = () => {
-    // PWAのiOS環境ではfile inputを使う
-    if (isPwaIos) {
-      fileInputRef.current?.click()
-      return
-    }
     if (!videoRef.current || !canvasRef.current) return
 
     const canvas = canvasRef.current
@@ -401,18 +361,6 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
               <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm">
                 連続撮影モード: {capturedPhotos.length}/40
               </div>
-            )}
-
-            {/* iOS PWA用の隠しファイル入力 */}
-            {isPwaIos && (
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: 'none' }}
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-              />
             )}
           </div>
         ) : (
