@@ -67,6 +67,17 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
+  // iOSのPWA（スタンドアロン）環境かどうか判定
+  const [isPwaIos, setIsPwaIos] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const standalone = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches
+      const isIos = /iP(hone|od|ad)/.test(navigator.userAgent)
+      setIsPwaIos(standalone && isIos)
+    }
+  }, [])
+
   // カメラストリーム開始
   const startCamera = async () => {
     try {
@@ -133,8 +144,33 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }
 
+  // ファイル入力から写真を取得する（PWAフォールバック用）
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return
+    const file = e.target.files[0]
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const newPhoto: CapturedPhoto = {
+        id: `photo_${Date.now()}_${Math.random().toString(36).substr(2,9)}`,
+        dataUrl,
+        timestamp: new Date(),
+        selected: true
+      }
+      setCapturedPhotos(prev => [...prev, newPhoto])
+      setSelectedCount(prev => prev + 1)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   // 写真撮影
   const capturePhoto = () => {
+    // PWAのiOS環境ではfile inputを使う
+    if (isPwaIos) {
+      fileInputRef.current?.click()
+      return
+    }
     if (!videoRef.current || !canvasRef.current) return
 
     const canvas = canvasRef.current
@@ -365,6 +401,18 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
               <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm">
                 連続撮影モード: {capturedPhotos.length}/40
               </div>
+            )}
+
+            {/* iOS PWA用の隠しファイル入力 */}
+            {isPwaIos && (
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+              />
             )}
           </div>
         ) : (
