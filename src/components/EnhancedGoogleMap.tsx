@@ -6,6 +6,7 @@ import { MAP_CONFIG } from '@/lib/utils/constants'
 import { MapLoading, InlineLoading } from '@/components/ui/loading'
 import { useAuth } from '@/hooks/useAuth'
 import { addToSchedule, removeFromSchedule, isInSchedule, getScheduledProperties, autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
+import CameraModal from './CameraModal'
 
 // Key Agent interface (for agent detail card)
 interface KeyAgent {
@@ -85,9 +86,10 @@ interface PropertyEditScreenProps {
   property: Property
   onClose: () => void
   onSave: (property: Property) => void
+  onPropertyUpdate?: (property: Property) => void
 }
 
-function PropertyEditScreen({ property, onClose, onSave }: PropertyEditScreenProps) {
+function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: PropertyEditScreenProps) {
   const [memo, setMemo] = useState(property.memo || '')
   const [originalMemo, setOriginalMemo] = useState(property.memo || '')
   const [isSaving, setIsSaving] = useState(false)
@@ -101,6 +103,7 @@ function PropertyEditScreen({ property, onClose, onSave }: PropertyEditScreenPro
     longitude: number
   } | null>(null)
   const [isLoadingKeyAgent, setIsLoadingKeyAgent] = useState(false)
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false)
   
   // ログインユーザー情報を取得
   const { user } = useAuth()
@@ -242,22 +245,35 @@ function PropertyEditScreen({ property, onClose, onSave }: PropertyEditScreenPro
 
   // カメラ起動処理
   const handleLaunchCamera = () => {
-    // スマホの標準カメラ機能を起動（最も確実な方法）
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.capture = 'environment' // 背面カメラを使用
-    input.multiple = false // 単一ファイルのみ
-    
-    input.click()
-    
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        console.log('Photo taken:', file.name, file.size, file.type)
-        alert('写真が撮影されました。スマホのカメラロールに保存されています。')
-      }
+    setIsCameraModalOpen(true)
+  }
+
+  // カメラモーダルを閉じる
+  const handleCloseCameraModal = () => {
+    setIsCameraModalOpen(false)
+  }
+
+  // 撮影した写真を保存する処理（廃止予定 - 実際の処理はCameraModal内で実行）
+  const handleSavePhotos = async (photos: any[]) => {
+    // この関数は使用されなくなりました
+    console.log('保存する写真:', photos)
+    return Promise.resolve()
+  }
+
+  // 物件のステータスが更新された時の処理
+  const handlePropertyStatusUpdate = (updatedProperty: Property) => {
+    // 親コンポーネントに更新を通知
+    if (onPropertyUpdate) {
+      onPropertyUpdate(updatedProperty)
     }
+    
+    // ローカル状態も更新
+    setCurrentStatus(updatedProperty.status || '未撮影')
+    
+    // カメラモーダルを閉じる
+    setIsCameraModalOpen(false)
+    
+    console.log('物件ステータスが更新されました:', updatedProperty.status)
   }
 
   // ナビ開始機能
@@ -630,6 +646,15 @@ function PropertyEditScreen({ property, onClose, onSave }: PropertyEditScreenPro
           </div>
         </div>
       </div>
+
+      {/* カメラモーダル */}
+      <CameraModal
+        property={property}
+        isOpen={isCameraModalOpen}
+        onClose={handleCloseCameraModal}
+        onSave={handleSavePhotos}
+        onStatusUpdate={handlePropertyStatusUpdate}
+      />
     </div>
   )
 }
@@ -2093,6 +2118,7 @@ export default function EnhancedGoogleMap({
           property={editingProperty} 
           onClose={handleCloseEdit}
           onSave={handleSaveProperty}
+          onPropertyUpdate={onPropertyUpdate}
         />
       )}
 

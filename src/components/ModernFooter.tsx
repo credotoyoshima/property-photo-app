@@ -15,7 +15,7 @@ export default function ModernFooter({ activeTab, onTabChange }: ModernFooterPro
   useEffect(() => {
     const checkUnread = async () => {
       try {
-        const response = await fetch('/api/chat/has-unread')
+        const response = await fetch('/api/chat/has-unread', { credentials: 'include' })
         const data = await response.json()
         setHasUnread(data.hasUnread || false)
       } catch (error) {
@@ -105,7 +105,7 @@ export default function ModernFooter({ activeTab, onTabChange }: ModernFooterPro
   ]
 
   return (
-    <footer className="bg-white/95 backdrop-blur-md border-t border-gray-200/50 fixed bottom-0 left-0 right-0 z-50 shadow-lg" style={{ transform: 'translate3d(0, 0, 0)', willChange: 'auto' }}>
+    <footer className="bg-white/95 backdrop-blur-md border-t border-gray-200/50 fixed bottom-0 left-0 right-0 z-50 shadow-lg">
       <div className="px-3 sm:px-4">
         <div className="flex items-start justify-around h-20 max-w-xl mx-auto pt-1.5">
           {tabs.map((tab) => {

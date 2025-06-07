@@ -65,7 +65,13 @@ export default function ChatPage() {
   // メッセージの取得
   const loadMessages = async () => {
     try {
-      const response = await fetch('/api/chat/messages')
+      // include cookies for auth
+      const response = await fetch('/api/chat/messages', { credentials: 'include' })
+      // redirect to login if unauthorized
+      if (response.status === 401) {
+        router.push('/login')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setMessages(data.messages || [])
@@ -113,7 +119,8 @@ export default function ChatPage() {
   // 既読マーク（非同期・エラー無視）
   const markAsRead = async () => {
     try {
-      fetch('/api/chat/mark-read', { method: 'POST' }).catch(() => {
+      // include cookies for auth
+      fetch('/api/chat/mark-read', { method: 'POST', credentials: 'include' }).catch(() => {
         // エラーを無視（ユーザー体験に影響しない）
       })
     } catch (error) {
@@ -143,7 +150,9 @@ export default function ChatPage() {
     setSending(true)
 
     try {
+      // include cookies for auth
       const response = await fetch('/api/chat/send', {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: messageText }),
