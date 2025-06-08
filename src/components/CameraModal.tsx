@@ -78,12 +78,15 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // カメラストリーム開始
   const startCamera = async () => {
     try {
-      // カメラ設定（4:3 アスペクト比、フロント/バック切替）を指定
+      // カメラ設定：4:3 アスペクト比、高解像度、選択デバイスID or facingMode
       const videoConstraints: MediaTrackConstraints = {
         aspectRatio: 4/3,
-        width: { ideal: 1280 },
-        height: { ideal: 960 },
-        facingMode: facingMode
+        width: { ideal: 1920 },
+        height: { ideal: 1440 },
+        ...(selectedDeviceId
+          ? { deviceId: { exact: selectedDeviceId } }
+          : { facingMode: facingMode }
+        )
       }
       const constraints: MediaStreamConstraints = { video: videoConstraints }
       console.log('[CameraModal] getUserMedia constraints:', constraints)
