@@ -381,7 +381,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
       ;(async () => {
         try {
           const mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { aspectRatio: 4/3 },
+            video: { facingMode: { exact: 'environment' }, aspectRatio: 4/3, width: { ideal: 1280 }, height: { ideal: 960 } },
           })
           setStream(mediaStream)
           if (videoRef.current) videoRef.current.srcObject = mediaStream
@@ -403,18 +403,34 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
 
   // 撮影処理
   const handleCapture = () => {
-    if (!videoRef.current || !canvasRef.current) return
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d')
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.drawImage(video, 0, 0)
-      const imageData = canvas.toDataURL('image/jpeg')
-      console.log('撮影画像:', imageData)
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      const targetRatio = 4 / 3;
+      let cropWidth = videoWidth;
+      let cropHeight = videoHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+      if (videoWidth / videoHeight > targetRatio) {
+        // 横長の場合、幅をクロップ
+        cropWidth = videoHeight * targetRatio;
+        offsetX = (videoWidth - cropWidth) / 2;
+      } else {
+        // 縦長の場合、高さをクロップ
+        cropHeight = videoWidth / targetRatio;
+        offsetY = (videoHeight - cropHeight) / 2;
+      }
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+      ctx.drawImage(video, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+      const imageData = canvas.toDataURL('image/jpeg');
+      console.log('撮影画像 (4:3 クロップ):', imageData);
     }
-    setIsCameraOpen(false)
+    setIsCameraOpen(false);
   }
 
   return (
@@ -437,6 +453,9 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+              
+              {/* 中央のタイトル */}
+              <div className="text-white font-medium">写真</div>
               
               {/* 右側のスペース（バランス調整） */}
               <div className="w-10 h-10"></div>
@@ -2027,8 +2046,6 @@ export default function EnhancedGoogleMap({
       // ズームレベル16で中央に配置
       map.setCenter({ lat: selectedProperty.latitude, lng: selectedProperty.longitude })
       map.setZoom(16)
-      // カード表示時にピン位置を少し上にオフセット
-      map.panBy(0,60)
     }
   }, [map, selectedPropertyId, properties])
 
@@ -2194,7 +2211,7 @@ export default function EnhancedGoogleMap({
               animateTo(userLocation.lat, userLocation.lng, 15)
             }
           }}
-          className={`absolute bottom-24 right-4 z-[999] bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95${
+          className={`fixed bottom-24 right-4 z-[999] bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95${
             selectedPropertyGroup || selectedAgent ? ' transform -translate-y-32' : ''
           }`}
         >

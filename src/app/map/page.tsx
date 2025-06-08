@@ -236,7 +236,7 @@ export default function MapPage() {
           isVisible={isMVPCardVisible}
         />
         
-        <main className="flex-1 relative">
+        <main className="flex-1 relative pb-20">
           <EnhancedGoogleMap
             properties={filteredProperties}
             selectedPropertyId={selectedPropertyId}

@@ -166,7 +166,7 @@ export default function StorePage() {
           isFilterOn={isFilterOn}
         />
         
-        <main className="flex-1 relative">
+        <main className="flex-1 relative pb-20">
           <StoreGoogleMap
             keyAgents={filteredAgents}
             properties={properties}
