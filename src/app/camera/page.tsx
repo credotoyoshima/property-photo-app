@@ -1,19 +1,50 @@
-import React, { Suspense } from 'react'
-import dynamicImport from 'next/dynamic'
+'use client'
 
-// Skip static generation; always render server-side
+// Skip static generation; always render client-side
 export const dynamic = 'force-dynamic'
 
-// Dynamically import the client-side camera component with suspense
-const CameraClient = dynamicImport(
-  () => import('./CameraClient'),
-  { suspense: true } as any
-)
+import React, { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import CameraModal from '@/components/CameraModal'
+import { autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
 
 export default function CameraPage() {
+  const router = useRouter()
+  const params = useSearchParams()
+  const propertyId = Number(params.get('propertyId'))
+  const propertyName = params.get('propertyName') || ''
+  const roomNumber = params.get('roomNumber') || ''
+
+  const [navigateToDetail, setNavigateToDetail] = useState(false)
+
+  const handleClose = () => {
+    navigateToDetail
+      ? router.push(`/properties/${propertyId}`)
+      : router.back()
+  }
+
+  const handleStatusUpdate = (updatedProperty: any) => {
+    autoRemoveCompletedProperty(updatedProperty.id)
+    window.dispatchEvent(new CustomEvent('scheduledPropertiesChanged'))
+    setNavigateToDetail(true)
+  }
+
   return (
-    <Suspense fallback={<div>Loading camera…</div>}>
-      <CameraClient />
-    </Suspense>
+    <CameraModal
+      property={{
+        id: propertyId,
+        property_name: propertyName,
+        room_number: roomNumber,
+        address: '',
+        latitude: 0,
+        longitude: 0,
+        status: '',
+        last_updated: new Date().toISOString(),
+      }}
+      isOpen={true}
+      onClose={handleClose}
+      onSave={async () => {}}
+      onStatusUpdate={handleStatusUpdate}
+    />
   )
 } 

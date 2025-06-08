@@ -53,6 +53,11 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   const { user } = useAuth()
   // State管理
   const [isStreaming, setIsStreaming] = useState(false)
+  // Mounted guard to avoid SSR document access
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([])
   const [currentView, setCurrentView] = useState<'camera' | 'gallery'>('camera')
   const [isUploading, setIsUploading] = useState(false)
@@ -78,15 +83,12 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // カメラストリーム開始
   const startCamera = async () => {
     try {
-      // カメラ設定：4:3 アスペクト比、高解像度、選択デバイスID or facingMode
+      // カメラ設定（4:3 アスペクト比、フロント/バック切替、高解像度）を指定
       const videoConstraints: MediaTrackConstraints = {
         aspectRatio: 4/3,
         width: { ideal: 1920 },
         height: { ideal: 1440 },
-        ...(selectedDeviceId
-          ? { deviceId: { exact: selectedDeviceId } }
-          : { facingMode: facingMode }
-        )
+        facingMode: facingMode
       }
       const constraints: MediaStreamConstraints = { video: videoConstraints }
       console.log('[CameraModal] getUserMedia constraints:', constraints)
@@ -171,8 +173,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0)
 
-    // Data URLとして取得
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+    // Data URLとして取得（高品質JPEG）
+    const dataUrl = canvas.toDataURL('image/jpeg', 1.0)
     
     const newPhoto: CapturedPhoto = {
       id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -303,7 +305,7 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     setSelectedCount(capturedPhotos.filter(photo => photo.selected).length)
   }, [capturedPhotos])
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
   // モーダルを body にポータル化してフッターより前面に表示
   return createPortal(
