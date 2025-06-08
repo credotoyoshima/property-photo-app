@@ -1,31 +1,31 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import CameraModal from '@/components/CameraModal';
-import { autoRemoveCompletedProperty } from '@/utils/shootingSchedule';
+import React, { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import CameraModal from '@/components/CameraModal'
+import { autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
 
 export default function CameraPageClient() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const propertyId = Number(params.get('propertyId'));
-  const propertyName = params.get('propertyName') || '';
-  const roomNumber = params.get('roomNumber') || '';
-  const [navigateToDetail, setNavigateToDetail] = useState(false);
+  const router = useRouter()
+  const params = useSearchParams()
+  const propertyId = Number(params.get('propertyId'))
+  const propertyName = params.get('propertyName') || ''
+  const roomNumber = params.get('roomNumber') || ''
+  const [navigateToDetail, setNavigateToDetail] = useState(false)
 
   const handleClose = () => {
     if (navigateToDetail) {
-      router.push(`/properties/${propertyId}`);
+      router.push(`/properties/${propertyId}`)
     } else {
-      router.back();
+      router.back()
     }
-  };
+  }
 
   const handleStatusUpdate = (updatedProperty: any) => {
-    autoRemoveCompletedProperty(updatedProperty.id);
-    window.dispatchEvent(new CustomEvent('scheduledPropertiesChanged'));
-    setNavigateToDetail(true);
-  };
+    autoRemoveCompletedProperty(updatedProperty.id)
+    window.dispatchEvent(new CustomEvent('scheduledPropertiesChanged'))
+    setNavigateToDetail(true)
+  }
 
   return (
     <CameraModal
@@ -41,8 +41,8 @@ export default function CameraPageClient() {
       }}
       isOpen={true}
       onClose={handleClose}
-      onSave={async (photos) => {}}
+      onSave={async () => {}}
       onStatusUpdate={handleStatusUpdate}
     />
-  );
+  )
 } 
