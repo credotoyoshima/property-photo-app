@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { FullScreenLoading } from '@/components/ui/loading'
 import { AuthGuard, UserInfo } from '@/components/AuthGuard'
 import { useAuth } from '@/hooks/useAuth'
+import CameraModal from '@/components/CameraModal'
 
 interface Property {
   id: number
@@ -44,6 +45,7 @@ export default function PropertyDetailPage({ params }: Props) {
   const [isEditingMemo, setIsEditingMemo] = useState(false)
   const [editedMemo, setEditedMemo] = useState('')
   const [isSavingMemo, setIsSavingMemo] = useState(false)
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
 
   // paramsを解決
   useEffect(() => {
@@ -123,8 +125,6 @@ export default function PropertyDetailPage({ params }: Props) {
     window.open(url, '_blank')
   }
 
-
-
   const handleEditMemo = () => {
     setEditedMemo(property?.memo || '')
     setIsEditingMemo(true)
@@ -168,6 +168,19 @@ export default function PropertyDetailPage({ params }: Props) {
     } finally {
       setIsSavingMemo(false)
     }
+  }
+
+  const handleOpenCamera = () => {
+    setIsCameraOpen(true)
+  }
+
+  const handleCloseCamera = () => {
+    setIsCameraOpen(false)
+  }
+
+  const handleCameraStatusUpdate = (updatedProperty: any) => {
+    setProperty(updatedProperty)
+    setIsCameraOpen(false)
   }
 
   if (isLoading) {
@@ -389,12 +402,18 @@ export default function PropertyDetailPage({ params }: Props) {
           {/* アクション */}
           <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
             <h2 className="text-lg font-semibold mb-4">アクション</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Button
                 onClick={handleNavigate}
                 className="w-full"
               >
                 📍 ナビで案内
+              </Button>
+              <Button
+                onClick={handleOpenCamera}
+                className="w-full"
+              >
+                📷 写真を撮影
               </Button>
               <Button
                 onClick={() => handleStatusUpdate(property.status === '未撮影' ? '撮影済み' : '未撮影')}
@@ -413,6 +432,15 @@ export default function PropertyDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+      {isCameraOpen && property && (
+        <CameraModal
+          property={property}
+          isOpen={isCameraOpen}
+          onClose={handleCloseCamera}
+          onSave={async () => {}}
+          onStatusUpdate={handleCameraStatusUpdate}
+        />
+      )}
     </AuthGuard>
   )
 } 

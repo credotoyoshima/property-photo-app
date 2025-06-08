@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import ModernHeader from '@/components/ModernHeader'
 import ModernFooter from '@/components/ModernFooter'
 import EnhancedGoogleMap from '@/components/EnhancedGoogleMap'
+import CameraModal from '@/components/CameraModal'
 import { AuthGuard } from '@/components/AuthGuard'
-import { getScheduledProperties } from '@/utils/shootingSchedule'
+import { getScheduledProperties, autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
 
 // Property interface
 interface Property {
@@ -104,6 +105,8 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'map' | 'store' | 'list' | 'chat' | 'mypage'>('map')
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [cameraProperty, setCameraProperty] = useState<Property | null>(null)
   // フィルター状態をローカルストレージから初期化
   const [isFilterOn, setIsFilterOn] = useState(() => {
     try {
@@ -184,6 +187,33 @@ export default function MapPage() {
     setSelectedPropertyId(propertyId)
   }, [])
 
+  // モーダル制御: カメラ起動
+  const handleLaunchCameraOnMap = useCallback((property: Property) => {
+    setCameraProperty(property)
+    setIsCameraOpen(true)
+  }, [])
+
+  // カメラモーダルを閉じる
+  const handleCloseCameraOnMap = () => {
+    setIsCameraOpen(false)
+    setCameraProperty(null)
+  }
+
+  // カメラ撮影後のステータス更新
+  const handleCameraStatusUpdateOnMap = (updatedProperty: Property) => {
+    // 撮影完了時に撮影予定から自動削除
+    const removed = autoRemoveCompletedProperty(updatedProperty.id)
+    if (removed) {
+      // 撮影予定変更イベントを発火
+      window.dispatchEvent(new CustomEvent('scheduledPropertiesChanged'))
+    }
+    // プロパティリストを更新
+    setProperties(prev => prev.map(p => p.id === updatedProperty.id ? updatedProperty : p))
+    // モーダルを閉じる
+    setIsCameraOpen(false)
+    setCameraProperty(null)
+  }
+
   // 検索によるフィルタリング
   const filteredProperties = properties.filter(property => {
     if (!searchQuery.trim()) return true
@@ -259,6 +289,7 @@ export default function MapPage() {
             selectedPropertyId={selectedPropertyId}
             onPropertySelect={handlePropertySelect}
             onPropertyUpdate={handlePropertyUpdate}
+            onLaunchCamera={handleLaunchCameraOnMap}
             showCurrentLocation={true}
             className="w-full h-full"
           />
@@ -268,6 +299,15 @@ export default function MapPage() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
         />
+        {isCameraOpen && cameraProperty && (
+          <CameraModal
+            property={cameraProperty}
+            isOpen={isCameraOpen}
+            onClose={handleCloseCameraOnMap}
+            onSave={async () => {}}
+            onStatusUpdate={handleCameraStatusUpdateOnMap}
+          />
+        )}
       </div>
     </AuthGuard>
   )

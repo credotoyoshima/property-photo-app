@@ -78,6 +78,7 @@ interface EnhancedGoogleMapProps {
   selectedPropertyId?: number | null
   onPropertySelect?: (propertyId: number | null) => void
   onPropertyUpdate?: (updatedProperty: Property) => void
+  onLaunchCamera?: (property: Property) => void
   className?: string
   showCurrentLocation?: boolean
 }
@@ -87,9 +88,10 @@ interface PropertyEditScreenProps {
   onClose: () => void
   onSave: (property: Property) => void
   onPropertyUpdate?: (property: Property) => void
+  onLaunchCamera?: (property: Property) => void
 }
 
-function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: PropertyEditScreenProps) {
+function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLaunchCamera }: PropertyEditScreenProps) {
   const router = useRouter()
   const [memo, setMemo] = useState(property.memo || '')
   const [originalMemo, setOriginalMemo] = useState(property.memo || '')
@@ -245,13 +247,12 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
 
   // カメラ起動処理
   const handleLaunchCamera = () => {
-    // Navigate to full-screen camera page with property context
-    const params = new URLSearchParams({
-      propertyId: property.id.toString(),
-      propertyName: property.property_name,
-      roomNumber: property.room_number
-    })
-    router.push(`/camera?${params.toString()}`)
+    // カメラ起動処理: onLaunchCameraがあれば呼び出し、なければ従来の遷移
+    if (onLaunchCamera) {
+      onLaunchCamera(property)
+    } else {
+      router.push(`/properties/${property.id}`)
+    }
   }
 
   // 撮影した写真を保存する処理（廃止予定 - 実際の処理はCameraModal内で実行）
@@ -1242,6 +1243,7 @@ export default function EnhancedGoogleMap({
   selectedPropertyId, 
   onPropertySelect,
   onPropertyUpdate,
+  onLaunchCamera,
   className = '',
   showCurrentLocation = true
 }: EnhancedGoogleMapProps) {
@@ -2110,6 +2112,7 @@ export default function EnhancedGoogleMap({
           onClose={handleCloseEdit}
           onSave={handleSaveProperty}
           onPropertyUpdate={onPropertyUpdate}
+          onLaunchCamera={onLaunchCamera}
         />
       )}
 
