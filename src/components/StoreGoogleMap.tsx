@@ -700,6 +700,8 @@ export default function StoreGoogleMap({
       // ズームレベル16で中央に配置
       map.setCenter({ lat: selectedAgent.latitude, lng: selectedAgent.longitude })
       map.setZoom(16)
+      // カード表示時にピン位置を少し上にオフセット
+      map.panBy(0, 60)
     }
   }, [map, selectedAgentPhone, keyAgents])
 
@@ -777,8 +779,8 @@ export default function StoreGoogleMap({
               animateTo(userLocation.lat, userLocation.lng, 15)
             }
           }}
-          className={`absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 ${
-            selectedAgent ? 'transform -translate-y-32' : ''
+          className={`absolute bottom-24 right-4 z-[999] bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95${
+            selectedAgent ? ' transform -translate-y-32' : ''
           }`}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#003D75' }}>

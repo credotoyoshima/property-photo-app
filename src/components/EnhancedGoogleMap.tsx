@@ -6,7 +6,6 @@ import { MAP_CONFIG } from '@/lib/utils/constants'
 import { MapLoading, InlineLoading } from '@/components/ui/loading'
 import { useAuth } from '@/hooks/useAuth'
 import { addToSchedule, removeFromSchedule, isInSchedule, getScheduledProperties, autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
-import CameraModal from './CameraModal'
 
 // Key Agent interface (for agent detail card)
 interface KeyAgent {
@@ -103,8 +102,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
     longitude: number
   } | null>(null)
   const [isLoadingKeyAgent, setIsLoadingKeyAgent] = useState(false)
-  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false)
-  
+
   // ログインユーザー情報を取得
   const { user } = useAuth()
 
@@ -243,39 +241,6 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
     }
   }
 
-  // カメラ起動処理
-  const handleLaunchCamera = () => {
-    setIsCameraModalOpen(true)
-  }
-
-  // カメラモーダルを閉じる
-  const handleCloseCameraModal = () => {
-    setIsCameraModalOpen(false)
-  }
-
-  // 撮影した写真を保存する処理（廃止予定 - 実際の処理はCameraModal内で実行）
-  const handleSavePhotos = async (photos: any[]) => {
-    // この関数は使用されなくなりました
-    console.log('保存する写真:', photos)
-    return Promise.resolve()
-  }
-
-  // 物件のステータスが更新された時の処理
-  const handlePropertyStatusUpdate = (updatedProperty: Property) => {
-    // 親コンポーネントに更新を通知
-    if (onPropertyUpdate) {
-      onPropertyUpdate(updatedProperty)
-    }
-    
-    // ローカル状態も更新
-    setCurrentStatus(updatedProperty.status || '未撮影')
-    
-    // カメラモーダルを閉じる
-    setIsCameraModalOpen(false)
-    
-    console.log('物件ステータスが更新されました:', updatedProperty.status)
-  }
-
   // ナビ開始機能
   const handleNavigate = () => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${property.latitude},${property.longitude}`
@@ -291,6 +256,11 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
     } else {
       alert('電話番号が設定されていません')
     }
+  }
+
+  // Add handleCamera callback for camera launch
+  const handleCamera = () => {
+    setIsCameraOpen(true)
   }
 
   // 鍵預かり業者への電話発信
@@ -398,8 +368,156 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
     )
   }
 
+  // カメラモーダル用のstateとrefs
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
+  const [zoomLevel, setZoomLevel] = useState<'0.5' | '1'>('1')
+
+  // カメラ起動・停止のeffect
+  useEffect(() => {
+    if (isCameraOpen) {
+      ;(async () => {
+        try {
+          const mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { aspectRatio: 4/3 },
+          })
+          setStream(mediaStream)
+          if (videoRef.current) videoRef.current.srcObject = mediaStream
+        } catch (error) {
+          console.error('カメラ起動エラー:', error)
+          setIsCameraOpen(false)
+        }
+      })()
+    } else if (stream) {
+      stream.getTracks().forEach((track) => track.stop())
+      setStream(null)
+    }
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop())
+      }
+    }
+  }, [isCameraOpen])
+
+  // 撮影処理
+  const handleCapture = () => {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.drawImage(video, 0, 0)
+      const imageData = canvas.toDataURL('image/jpeg')
+      console.log('撮影画像:', imageData)
+    }
+    setIsCameraOpen(false)
+  }
+
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-[1000] bg-white flex flex-col">
+      {isCameraOpen && (
+        <div className="fixed inset-0 z-[1100] bg-black">
+          {/* カメラプレビュー */}
+          <video ref={videoRef} autoPlay playsInline muted className="object-cover w-full h-full" />
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          
+          {/* 上部オーバーレイバー */}
+          <div className="absolute top-0 left-0 right-0 bg-black bg-opacity-70">
+            <div className="flex items-center justify-between p-4">
+              {/* 閉じるボタン */}
+              <button
+                onClick={() => setIsCameraOpen(false)}
+                className="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* 右側のスペース（バランス調整） */}
+              <div className="w-10 h-10"></div>
+            </div>
+          </div>
+          
+          {/* 3x3 グリッド線 */}
+          <div className="absolute pointer-events-none" style={{ top: '72px', bottom: '195px', left: 0, right: 0 }}>
+            {/* 縦線（ビューファインダー全体の高さ） */}
+            <div className="absolute left-1/3 w-px bg-white bg-opacity-30" style={{ top: 0, height: 'calc(100vh - 275px)' }}></div>
+            <div className="absolute left-2/3 w-px bg-white bg-opacity-30" style={{ top: 0, height: 'calc(100vh - 275px)' }}></div>
+            {/* 横線（制限された範囲内） */}
+            <div className="absolute left-0 right-0 top-1/3 h-px bg-white bg-opacity-30"></div>
+            <div className="absolute left-0 right-0 top-2/3 h-px bg-white bg-opacity-30"></div>
+            
+            {/* L字型コーナーマーカー */}
+            {/* 左上角 */}
+            <div className="absolute top-0 left-0">
+              <div className="w-6 h-0.5 bg-white opacity-80"></div>
+              <div className="w-0.5 h-6 bg-white opacity-80"></div>
+            </div>
+            
+            {/* 右上角 */}
+            <div className="absolute top-0 right-0">
+              <div className="w-6 h-0.5 bg-white opacity-80 ml-auto"></div>
+              <div className="w-0.5 h-6 bg-white opacity-80 ml-auto"></div>
+            </div>
+            
+            {/* 左下角 */}
+            <div className="absolute bottom-2 left-0">
+              <div className="w-0.5 h-6 bg-white opacity-80"></div>
+              <div className="w-6 h-0.5 bg-white opacity-80"></div>
+            </div>
+            
+            {/* 右下角 */}
+            <div className="absolute bottom-2 right-0">
+              <div className="w-0.5 h-6 bg-white opacity-80 ml-auto"></div>
+              <div className="w-6 h-0.5 bg-white opacity-80 ml-auto"></div>
+            </div>
+          </div>
+          
+          {/* 下部コントロールエリア */}
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70">
+            <div className="flex items-center justify-between p-6 pb-12">
+              {/* 左側のスペース */}
+              <div className="w-16"></div>
+              
+              {/* 中央のシャッターボタン */}
+              <div className="flex flex-col items-center">
+                {/* ズーム倍率ボタン */}
+                <div className="mb-4 flex bg-black bg-opacity-60 rounded-full px-2 py-1">
+                  {(['0.5', '1'] as const).map((zoom) => (
+                    <button
+                      key={zoom}
+                      onClick={() => setZoomLevel(zoom)}
+                      className={`px-3 py-1 text-sm font-medium rounded-full transition-all ${
+                        zoomLevel === zoom
+                          ? 'text-yellow-400 bg-white bg-opacity-20'
+                          : 'text-white text-opacity-60'
+                      }`}
+                    >
+                      {zoom === '0.5' ? '0.5×' : '1×'}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* シャッターボタン */}
+                <button
+                  onClick={handleCapture}
+                  className="w-20 h-20 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                >
+                  <div className="w-[68px] h-[68px] bg-white rounded-full border-2 border-black border-opacity-70"></div>
+                </button>
+              </div>
+              
+              {/* 右側のスペース */}
+              <div className="w-16"></div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -426,20 +544,25 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
             </button>
-            
+
             {/* カメラボタン */}
-            <button 
-              onClick={handleLaunchCamera}
+            <button
+              onClick={handleCamera}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="カメラ起動"
             >
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h4l3-3h4l3 3h4v12H3V7z" />
+                <circle cx="12" cy="13" r="3" />
               </svg>
             </button>
-            
+
             {/* 閉じるボタン */}
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="閉じる"
+            >
               <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -646,15 +769,6 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
           </div>
         </div>
       </div>
-
-      {/* カメラモーダル */}
-      <CameraModal
-        property={property}
-        isOpen={isCameraModalOpen}
-        onClose={handleCloseCameraModal}
-        onSave={handleSavePhotos}
-        onStatusUpdate={handlePropertyStatusUpdate}
-      />
     </div>
   )
 }
@@ -1913,6 +2027,8 @@ export default function EnhancedGoogleMap({
       // ズームレベル16で中央に配置
       map.setCenter({ lat: selectedProperty.latitude, lng: selectedProperty.longitude })
       map.setZoom(16)
+      // カード表示時にピン位置を少し上にオフセット
+      map.panBy(0,60)
     }
   }, [map, selectedPropertyId, properties])
 
@@ -2078,8 +2194,8 @@ export default function EnhancedGoogleMap({
               animateTo(userLocation.lat, userLocation.lng, 15)
             }
           }}
-          className={`absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 ${
-            selectedPropertyGroup || selectedAgent ? 'transform -translate-y-32' : ''
+          className={`absolute bottom-24 right-4 z-[999] bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95${
+            selectedPropertyGroup || selectedAgent ? ' transform -translate-y-32' : ''
           }`}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#003D75' }}>

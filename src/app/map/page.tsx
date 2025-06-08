@@ -242,6 +242,7 @@ export default function MapPage() {
             selectedPropertyId={selectedPropertyId}
             onPropertySelect={handlePropertySelect}
             onPropertyUpdate={handlePropertyUpdate}
+            showCurrentLocation={true}
             className="w-full h-full"
           />
         </main>
