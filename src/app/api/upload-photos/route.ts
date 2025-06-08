@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadPropertyPhotos, generateFolderUrl } from '@/lib/googleDrive'
+import { updatePropertyStatus } from '@/lib/googleSheets'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +9,8 @@ export async function POST(request: NextRequest) {
       propertyId, 
       propertyName, 
       roomNumber, 
-      photos 
+      photos, 
+      updatedBy 
     } = body
 
     // バリデーション
@@ -46,24 +48,15 @@ export async function POST(request: NextRequest) {
 
     // 物件のステータスを「撮影済」に更新
     try {
-      const updateResponse = await fetch(`${process.env.NEXTAUTH_URL}/api/properties/${propertyId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: '撮影済',
-          shooting_datetime: new Date().toISOString(),
-          updated_by: 'カメラアプリ', // または実際のユーザー名
-        }),
-      })
-
-      if (!updateResponse.ok) {
-        console.warn('ステータス更新に失敗しましたが、写真アップロードは成功しました')
-      }
+      await updatePropertyStatus(
+        propertyId,
+        '撮影済',
+        new Date().toISOString(),
+        updatedBy
+      )
+      console.log('物件ステータスを「撮影済」に更新しました')
     } catch (statusError) {
-      console.error('ステータス更新エラー:', statusError)
-      // ステータス更新失敗は警告として扱い、写真アップロード成功は維持
+      console.warn('ステータス更新に失敗しましたが、写真アップロードは成功しました', statusError)
     }
 
     return NextResponse.json({

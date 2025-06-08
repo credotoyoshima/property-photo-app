@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { createPortal } from 'react-dom'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Property {
   id: number
@@ -49,6 +50,7 @@ interface CameraModalProps {
 }
 
 export default function CameraModal({ property, isOpen, onClose, onSave, onStatusUpdate }: CameraModalProps) {
+  const { user } = useAuth()
   // State管理
   const [isStreaming, setIsStreaming] = useState(false)
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([])
@@ -56,6 +58,12 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   const [isUploading, setIsUploading] = useState(false)
   const [selectedCount, setSelectedCount] = useState(0)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
+  // シャッターフラッシュ用ステート
+  const [isFlashing, setIsFlashing] = useState(false)
+  // フロント/バックカメラ切替用ステート
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
+  // 画面向き検出用ステート
+  const [isLandscape, setIsLandscape] = useState(false)
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -70,18 +78,12 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // カメラストリーム開始
   const startCamera = async () => {
     try {
-      // --- デバッグログ: デバイス列挙 ---
-      const allDevices = await navigator.mediaDevices.enumerateDevices()
-      const videoInputs = allDevices.filter(d => d.kind === 'videoinput')
-      console.log('[CameraModal] enumerateDevices -> videoInputs:', videoInputs)
-      // iOS PWAでは facingMode のみが有効になる場合があるため全デバイス選択不可時は facingMode で取得
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
-      let videoConstraints: MediaTrackConstraints = { width: { ideal: 1920 }, height: { ideal: 1080 } }
-      if (!isIOS && selectedDeviceId && videoInputs.some(d => d.deviceId === selectedDeviceId)) {
-        videoConstraints.deviceId = { exact: selectedDeviceId }
-      } else {
-        console.log('[CameraModal] Fallback to facingMode=environment')
-        videoConstraints.facingMode = 'environment'
+      // カメラ設定（4:3 アスペクト比、フロント/バック切替）を指定
+      const videoConstraints: MediaTrackConstraints = {
+        aspectRatio: 4/3,
+        width: { ideal: 1280 },
+        height: { ideal: 960 },
+        facingMode: facingMode
       }
       const constraints: MediaStreamConstraints = { video: videoConstraints }
       console.log('[CameraModal] getUserMedia constraints:', constraints)
@@ -120,6 +122,14 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }, [selectedDeviceId, isOpen])
 
+  // facingMode変更時にカメラを再起動
+  useEffect(() => {
+    if (isOpen) {
+      stopCamera()
+      startCamera()
+    }
+  }, [facingMode, isOpen])
+
   // カメラストリーム停止
   const stopCamera = () => {
     if (streamRef.current) {
@@ -127,10 +137,24 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
       streamRef.current = null
       setIsStreaming(false)
     }
+    // video要素のストリーム参照を解除
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
   }
+
+  // コンポーネントアンマウント時にもカメラ停止
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+  }, [])
 
   // 写真撮影
   const capturePhoto = () => {
+    // フラッシュアニメーション
+    setIsFlashing(true)
+    setTimeout(() => setIsFlashing(false), 200)
     if (!videoRef.current || !canvasRef.current) return
 
     const canvas = canvasRef.current
@@ -175,11 +199,10 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // 写真削除
   const deletePhoto = (photoId: string) => {
     setCapturedPhotos(prev => {
-      const photoToDelete = prev.find(p => p.id === photoId)
-      if (photoToDelete?.selected) {
-        setSelectedCount(prevCount => prevCount - 1)
-      }
-      return prev.filter(p => p.id !== photoId)
+      const newArr = prev.filter(p => p.id !== photoId)
+      // 選択中カウントを再計算
+      setSelectedCount(newArr.filter(p => p.selected).length)
+      return newArr
     })
   }
 
@@ -208,7 +231,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
           photos: selectedPhotos.map(photo => ({
             dataUrl: photo.dataUrl,
             timestamp: photo.timestamp.toISOString()
-          }))
+          })),
+          updatedBy: user?.name
         })
       })
 
@@ -262,225 +286,135 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }, [currentView])
 
+  // 画面向きイベント監視
+  useEffect(() => {
+    const mql = window.matchMedia('(orientation: landscape)')
+    const handler = (e: MediaQueryListEvent) => setIsLandscape(e.matches)
+    mql.addEventListener('change', handler)
+    setIsLandscape(mql.matches)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
+
+  // 写真配列が変化したら選択数を再計算
+  useEffect(() => {
+    setSelectedCount(capturedPhotos.filter(photo => photo.selected).length)
+  }, [capturedPhotos])
+
   if (!isOpen) return null
 
   // モーダルを body にポータル化してフッターより前面に表示
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-black">
-      {/* ヘッダー */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between p-4 text-white">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {property.property_name} {property.room_number}
-            </h2>
-            <p className="text-sm opacity-80">
-              撮影済み: {capturedPhotos.length}枚 | 選択中: {selectedCount}枚
-            </p>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* タブナビゲーション */}
-      <div className="absolute top-16 left-0 right-0 z-10">
-        <div className="flex bg-black/30 backdrop-blur-sm">
-          <button
-            onClick={() => setCurrentView('camera')}
-            className={`flex-1 py-3 text-center text-white font-medium ${
-              currentView === 'camera' ? 'bg-blue-600' : 'hover:bg-white/10'
-            } transition-colors`}
-          >
-            📷 カメラ
-          </button>
-          <button
-            onClick={() => setCurrentView('gallery')}
-            className={`flex-1 py-3 text-center text-white font-medium ${
-              currentView === 'gallery' ? 'bg-blue-600' : 'hover:bg-white/10'
-            } transition-colors`}
-          >
-            🖼️ ギャラリー ({capturedPhotos.length})
-          </button>
-        </div>
-      </div>
-
-      {/* メインコンテンツ */}
-      <div className="pt-28 pb-24 h-full">
-        {currentView === 'camera' ? (
-          // カメラビュー
-          <div className="relative h-full">
-            {/* カメラデバイス選択ボタン（複数カメラ対応: 標準/広角切り替え） */}
-            {videoDevices.length > 1 && (
-              <div className="absolute top-4 right-4 z-20 flex space-x-2">
-                {videoDevices.map((device, idx) => (
-                  <button
-                    key={device.deviceId}
-                    onClick={() => setSelectedDeviceId(device.deviceId)}
-                    className={`px-2 py-1 text-xs rounded ${
-                      selectedDeviceId === device.deviceId
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white/30 text-black'
-                    }`}
-                  >
-                    {device.label || `カメラ${idx + 1}`}
-                  </button>
-                ))}
-              </div>
-            )}
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            <canvas ref={canvasRef} className="hidden" />
-            
-            {/* 撮影ボタン */}
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-              <button
-                onClick={capturePhoto}
-                disabled={!isStreaming}
-                className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 hover:border-blue-500 disabled:opacity-50 transition-colors shadow-lg active:scale-95"
-              >
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <div className="w-16 h-16 bg-red-500 rounded-full"></div>
-                </div>
-              </button>
-            </div>
-
-            {/* 連続撮影モード表示 */}
-            {capturedPhotos.length > 0 && (
-              <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm">
-                連続撮影モード: {capturedPhotos.length}/40
-              </div>
-            )}
-          </div>
-        ) : (
-          // ギャラリービュー
-          <div className="h-full overflow-y-auto p-4">
-            {capturedPhotos.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-white text-center">
-                <div>
-                  <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-lg mb-2">まだ写真がありません</p>
-                  <p className="text-sm opacity-80">カメラタブで撮影を開始してください</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* 写真グリッド */}
-                <div className="grid grid-cols-3 gap-2">
-                  {capturedPhotos.map((photo) => (
-                    <div
-                      key={photo.id}
-                      className={`relative aspect-square rounded-lg overflow-hidden ${
-                        photo.selected ? 'ring-2 ring-blue-500' : ''
-                      }`}
-                    >
-                      <img
-                        src={photo.dataUrl}
-                        alt={`撮影写真 ${photo.timestamp.toLocaleTimeString()}`}
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => togglePhotoSelection(photo.id)}
-                      />
-                      
-                      {/* 選択チェックボックス */}
-                      <div className="absolute top-2 right-2">
-                        <input
-                          type="checkbox"
-                          checked={photo.selected}
-                          onChange={() => togglePhotoSelection(photo.id)}
-                          className="w-5 h-5 rounded"
-                        />
-                      </div>
-
-                      {/* 削除ボタン */}
-                      <button
-                        onClick={() => deletePhoto(photo.id)}
-                        className="absolute top-2 left-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-
-                      {/* タイムスタンプ */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
-                        {photo.timestamp.toLocaleTimeString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+    <div className="fixed inset-0 z-[9999] bg-gray-50 flex flex-col">
+      {/* シャッターフラッシュオーバーレイ */}
+      <div className={`absolute inset-0 bg-white z-10 pointer-events-none transition-opacity duration-200 ${isFlashing ? 'opacity-100' : 'opacity-0'}`} />
+      {/* カメラビューボタンバー */}
+      {currentView === 'camera' && (
+      <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-1 z-20">
+        <button onClick={handleClose} className="h-8 px-2 bg-black/70 text-white rounded-lg flex items-center justify-center text-xl">×</button>
+        {/* フロント/バック切替 */}
+        <button onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')} className="h-8 px-2 bg-black/70 text-white rounded-lg flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <polyline strokeLinecap="round" strokeLinejoin="round" points="23 4 23 10 17 10" />
+            <polyline strokeLinecap="round" strokeLinejoin="round" points="1 20 1 14 7 14" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.51 9a9 9 0 0114.13-3.36L23 10" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.49 15a9 9 0 01-14.13 3.36L1 14" />
+          </svg>
+        </button>
+        {videoDevices.length > 1 && (
+          <div className="flex space-x-1 items-center">
+            <button
+              onClick={() => setSelectedDeviceId(videoDevices[0].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[0].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+            >0.5×</button>
+            <button
+              onClick={() => setSelectedDeviceId(videoDevices[1].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[1].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+            >1.0×</button>
           </div>
         )}
+        <button onClick={() => setCurrentView('gallery')} className="h-8 px-3 bg-black/70 text-white rounded-lg flex items-center justify-center text-sm">
+          ギャラリー ({capturedPhotos.length})
+        </button>
       </div>
-
-      {/* フッターアクション */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between p-4">
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            className="text-white border-white hover:bg-white/10"
+      )}
+      {currentView === 'camera' ? (
+        <>
+          {/* ビューファインダー */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover pointer-events-none"
+          />
+          <canvas ref={canvasRef} className="hidden" />
+          {/* シャッターボタン */}
+          <button
+            onClick={capturePhoto}
+            className={`${isLandscape
+              ? 'absolute top-1/2 right-4 transform -translate-y-1/2'
+              : 'absolute bottom-6 left-1/2 transform -translate-x-1/2'
+            } w-12 h-12 bg-white rounded-full flex items-center justify-center`}
           >
-            キャンセル
-          </Button>
-          
-          <div className="flex space-x-3">
-            {currentView === 'gallery' && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setCapturedPhotos(prev => {
-                      const newPhotos = prev.map(photo => ({ ...photo, selected: true }))
-                      setSelectedCount(newPhotos.length)
-                      return newPhotos
-                    })
-                  }}
-                  className="text-white border-white hover:bg-white/10"
-                >
-                  全選択
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={selectedCount === 0 || isUploading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {isUploading 
-                    ? (uploadProgress 
-                        ? `アップロード中... (${uploadProgress.current}/${uploadProgress.total})` 
-                        : '保存中...'
-                      )
-                    : `Google Driveに保存 (${selectedCount}枚)`
-                  }
-                </Button>
-              </>
-            )}
-            
-            {currentView === 'camera' && capturedPhotos.length > 0 && (
-              <Button
-                onClick={() => setCurrentView('gallery')}
-                className="bg-green-600 hover:bg-green-700 text-white"
+            <div className="w-10 h-10 border-2 border-black/70 rounded-full"></div>
+          </button>
+        </>
+      ) : (
+        // ギャラリービュー (flex layout)
+        <div className="absolute inset-0 flex flex-col">
+          {/* ギャラリーヘッダー */}
+          <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-gray-200/50 h-16 pl-4 pr-2 flex items-center justify-between">
+            <div className="text-gray-800 text-lg font-semibold">{property.property_name} {property.room_number}</div>
+            <div className="flex items-center">
+              {/* 戻るアイコン */}
+              <button
+                onClick={() => setCurrentView('camera')}
+                aria-label="戻る"
+                className="p-2"
               >
-                写真確認 ({capturedPhotos.length}枚)
-              </Button>
-            )}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7l-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/* ギャラリーグリッドまたは空状態 */}
+          {capturedPhotos.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-gray-500 text-lg mb-2">写真がまだありません</p>
+              <p className="text-gray-400 text-sm">撮影を開始してください</p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-auto px-2 grid grid-cols-3 gap-2 content-start mt-2">
+              {capturedPhotos.map(photo => (
+                <div key={photo.id} className="relative aspect-square">
+                  <img src={photo.dataUrl} className="w-full h-full object-cover rounded" />
+                  <button onClick={() => deletePhoto(photo.id)} className="absolute top-1 right-1 p-1 bg-white/50 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  <input type="checkbox" checked={photo.selected} onChange={() => togglePhotoSelection(photo.id)} className="absolute top-1 left-1 w-5 h-5" />
+                </div>
+              ))}
+            </div>
+          )}
+          {/* ギャラリーフッター */}
+          <div className="bg-white border-t shadow-lg flex-shrink-0 h-20 flex items-center justify-between px-4">
+            <div className="text-gray-800 text-lg">選択中: {selectedCount} / {capturedPhotos.length}</div>
+            <div className="flex items-center space-x-2">
+              {/* 全選択 */}
+              <button onClick={() => { setCapturedPhotos(prev => prev.map(p => ({ ...p, selected: true }))); setSelectedCount(capturedPhotos.length); }} className="h-10 px-4 bg-gray-300 text-black rounded-lg text-sm">全選択</button>
+              {/* Google Drive保存 */}
+              <button onClick={handleSave} disabled={selectedCount === 0 || isUploading} className="h-10 px-4 bg-[#003D75] text-white rounded-lg text-sm disabled:opacity-50">Driveへ保存</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>,
     document.body
   )

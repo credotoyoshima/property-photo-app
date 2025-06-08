@@ -6,7 +6,7 @@ import { MAP_CONFIG } from '@/lib/utils/constants'
 import { MapLoading, InlineLoading } from '@/components/ui/loading'
 import { useAuth } from '@/hooks/useAuth'
 import { addToSchedule, removeFromSchedule, isInSchedule, getScheduledProperties, autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
-import CameraModal from './CameraModal'
+import { useRouter } from 'next/navigation'
 
 // Key Agent interface (for agent detail card)
 interface KeyAgent {
@@ -90,6 +90,7 @@ interface PropertyEditScreenProps {
 }
 
 function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: PropertyEditScreenProps) {
+  const router = useRouter()
   const [memo, setMemo] = useState(property.memo || '')
   const [originalMemo, setOriginalMemo] = useState(property.memo || '')
   const [isSaving, setIsSaving] = useState(false)
@@ -103,8 +104,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
     longitude: number
   } | null>(null)
   const [isLoadingKeyAgent, setIsLoadingKeyAgent] = useState(false)
-  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false)
-  
+
   // ログインユーザー情報を取得
   const { user } = useAuth()
 
@@ -245,12 +245,13 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
 
   // カメラ起動処理
   const handleLaunchCamera = () => {
-    setIsCameraModalOpen(true)
-  }
-
-  // カメラモーダルを閉じる
-  const handleCloseCameraModal = () => {
-    setIsCameraModalOpen(false)
+    // Navigate to full-screen camera page with property context
+    const params = new URLSearchParams({
+      propertyId: property.id.toString(),
+      propertyName: property.property_name,
+      roomNumber: property.room_number
+    })
+    router.push(`/camera?${params.toString()}`)
   }
 
   // 撮影した写真を保存する処理（廃止予定 - 実際の処理はCameraModal内で実行）
@@ -270,8 +271,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
     // ローカル状態も更新
     setCurrentStatus(updatedProperty.status || '未撮影')
     
-    // カメラモーダルを閉じる
-    setIsCameraModalOpen(false)
+    // カメラページに遷移したため、モーダル制御は不要
     
     console.log('物件ステータスが更新されました:', updatedProperty.status)
   }
@@ -646,15 +646,6 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate }: Pro
           </div>
         </div>
       </div>
-
-      {/* カメラモーダル */}
-      <CameraModal
-        property={property}
-        isOpen={isCameraModalOpen}
-        onClose={handleCloseCameraModal}
-        onSave={handleSavePhotos}
-        onStatusUpdate={handlePropertyStatusUpdate}
-      />
     </div>
   )
 }

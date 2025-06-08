@@ -104,11 +104,28 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'map' | 'store' | 'list' | 'chat' | 'mypage'>('map')
-  const [isFilterOn, setIsFilterOn] = useState(0)
+  // フィルター状態をローカルストレージから初期化
+  const [isFilterOn, setIsFilterOn] = useState(() => {
+    try {
+      const stored = localStorage.getItem('mapFilterState')
+      return stored !== null ? parseInt(stored, 10) : 0
+    } catch {
+      return 0
+    }
+  })
   const [mvpData, setMVPData] = useState<MVPData | null>(null)
   const [isMVPCardVisible, setIsMVPCardVisible] = useState(true)
 
   const router = useRouter()
+
+  // フィルター状態をローカルストレージに保存
+  useEffect(() => {
+    try {
+      localStorage.setItem('mapFilterState', String(isFilterOn))
+    } catch (e) {
+      console.error('Failed to save map filter state:', e)
+    }
+  }, [isFilterOn])
 
   // データ取得（最適化版）
   const fetchData = async () => {

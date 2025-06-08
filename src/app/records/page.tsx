@@ -394,7 +394,7 @@ export default function ShootingRecordsPage() {
                   <select
                     value={selectedStore}
                     onChange={(e) => setSelectedStore(e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-full px-2 py-2 border border-gray-300 rounded text-sm"
                   >
                     <option value="">全店舗</option>
                     {filterOptions.stores.map(store => (
@@ -408,7 +408,7 @@ export default function ShootingRecordsPage() {
                   <select
                     value={selectedStaff}
                     onChange={(e) => setSelectedStaff(e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-full px-2 py-2 border border-gray-300 rounded text-sm"
                   >
                     <option value="">全担当者</option>
                     {filterOptions.staff.map(staff => (
@@ -424,7 +424,7 @@ export default function ShootingRecordsPage() {
                     variant="outline"
                     size="sm"
                     onClick={clearFilters}
-                    className="h-7 px-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300 transition-all duration-150 focus:ring-0 focus:outline-none"
+                    className="h-auto px-2 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300 transition-all duration-150 focus:ring-0 focus:outline-none"
                   >
                     クリア
                   </Button>

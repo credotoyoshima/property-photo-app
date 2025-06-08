@@ -284,7 +284,7 @@ export default function ChatPage() {
             // スケルトンローディング表示
             <ChatSkeleton />
           ) : filteredMessages.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="flex flex-col items-center justify-center text-center" style={{ height: 'calc(100vh - 220px)' }}>
               <div className="text-gray-400 mb-4">
                 <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
