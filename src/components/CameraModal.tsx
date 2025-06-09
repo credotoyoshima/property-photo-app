@@ -125,19 +125,21 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
         })
         .then(devices => {
           const videoInputs = devices.filter(d => d.kind === 'videoinput')
-          // ラベルに基づき、超広角(0.5×)を最優先、その次に標準広角(1.0×)、それ以外をその順序でソート
+          // ラベルに基づき、バックカメラを最優先、それ以外を後回しにソート
+          const backRegex = /back|rear|environment|後置|背面/i
+          const frontRegex = /front|user|前置/i
           const sortedInputs = [...videoInputs].sort((a, b) => {
-            const labelA = a.label.toLowerCase()
-            const labelB = b.label.toLowerCase()
+            const labelA = a.label
+            const labelB = b.label
             const score = (label: string) => {
-              if (/0\.5|ultra wide/.test(label)) return 0
-              if (/1\.0|wide angle|back|environment/.test(label)) return 1
+              if (backRegex.test(label)) return 0
+              if (frontRegex.test(label)) return 1
               return 2
             }
             return score(labelA) - score(labelB)
           })
           setVideoDevices(sortedInputs)
-          // 最初は超広角もしくは標準広角を選択
+          // 最初はバックカメラを選択
           if (sortedInputs.length > 0 && !selectedDeviceId) {
             setSelectedDeviceId(sortedInputs[0].deviceId)
           }
