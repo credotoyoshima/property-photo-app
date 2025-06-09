@@ -117,11 +117,15 @@ export const uploadFile = async (
       body: bufferStream,
     }
 
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id',
-    })
+    // Resumable Uploadを使用
+    const response = await drive.files.create(
+      {
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id',
+        uploadType: 'resumable',
+      }
+    )
 
     const fileId = response.data.id
     if (!fileId) {

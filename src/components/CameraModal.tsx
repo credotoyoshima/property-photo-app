@@ -208,15 +208,21 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
 
     if (!ctx) return
 
-    // 元の動画解像度(幅×高さ)でキャプチャ
-    const w = video.videoWidth
-    const h = video.videoHeight
+    // iPhoneなどの高解像度を抑制（最大1280pxまでリサイズ）
+    const MAX_SIDE = 1280
+    let w = video.videoWidth
+    let h = video.videoHeight
+    if (Math.max(w, h) > MAX_SIDE) {
+      const scale = MAX_SIDE / Math.max(w, h)
+      w = Math.round(w * scale)
+      h = Math.round(h * scale)
+    }
     canvas.width = w
     canvas.height = h
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(video, 0, 0, w, h)
 
-    // Data URLとして取得（JPEG品質を1.0で最高画質）
-    const dataUrl = canvas.toDataURL('image/jpeg', 1.0)
+    // Data URLとして取得（JPEG品質を0.8に設定してサイズを抑制）
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
 
     const newPhoto: CapturedPhoto = {
       id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -426,7 +432,7 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
           </div>
           {/* アップロード進捗表示 */}
           {isUploading && uploadProgress && (
-            <div className="px-4 py-2 bg-yellow-100 text-center text-sm font-medium z-20">
+            <div className="px-4 py-2 bg-primary text-primary-foreground text-center text-sm font-medium z-20">
               アップロード中… {uploadProgress.current}/{uploadProgress.total}
             </div>
           )}
