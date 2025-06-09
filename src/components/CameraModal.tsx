@@ -83,12 +83,18 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // カメラストリーム開始
   const startCamera = async () => {
     try {
-      // カメラ設定（4:3 アスペクト比、フロント/バック切替、高解像度）を指定
-      const videoConstraints: MediaTrackConstraints = {
+      // カメラ設定（デバイス指定 or フェイシングモード切替、高解像度）
+      let videoConstraints: MediaTrackConstraints = {
         aspectRatio: 4/3,
         width: { ideal: 1920 },
         height: { ideal: 1440 },
-        facingMode: facingMode
+      }
+      if (selectedDeviceId) {
+        // 選択されたデバイス（0.5×/1.0×）を優先して指定
+        videoConstraints.deviceId = { exact: selectedDeviceId }
+      } else {
+        // デバイス未選択時は facingMode で背面/前面を指定
+        videoConstraints.facingMode = facingMode
       }
       const constraints: MediaStreamConstraints = { video: videoConstraints }
       console.log('[CameraModal] getUserMedia constraints:', constraints)
@@ -105,17 +111,37 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }
 
-  // モーダルオープン時に利用可能なビデオデバイスを取得
+  // モーダルオープン時にカメラ許可をリクエストし、許可後にデバイスを列挙
   useEffect(() => {
     if (isOpen) {
-      navigator.mediaDevices.enumerateDevices().then(devices => {
-        const videoInputs = devices.filter(d => d.kind === 'videoinput')
-        setVideoDevices(videoInputs)
-        // 最初は標準の背面カメラを選択
-        if (videoInputs.length > 0 && !selectedDeviceId) {
-          setSelectedDeviceId(videoInputs[0].deviceId)
-        }
-      })
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(tempStream => {
+          // 許可用ストリームは即停止
+          tempStream.getTracks().forEach(track => track.stop())
+          return navigator.mediaDevices.enumerateDevices()
+        })
+        .then(devices => {
+          const videoInputs = devices.filter(d => d.kind === 'videoinput')
+          // ラベルに基づき、超広角(0.5×)を最優先、その次に標準広角(1.0×)、それ以外をその順序でソート
+          const sortedInputs = [...videoInputs].sort((a, b) => {
+            const labelA = a.label.toLowerCase()
+            const labelB = b.label.toLowerCase()
+            const score = (label: string) => {
+              if (/0\.5|ultra wide/.test(label)) return 0
+              if (/1\.0|wide angle|back|environment/.test(label)) return 1
+              return 2
+            }
+            return score(labelA) - score(labelB)
+          })
+          setVideoDevices(sortedInputs)
+          // 最初は超広角もしくは標準広角を選択
+          if (sortedInputs.length > 0 && !selectedDeviceId) {
+            setSelectedDeviceId(sortedInputs[0].deviceId)
+          }
+        })
+        .catch(error => {
+          console.warn('デバイス取得エラー:', error)
+        })
     }
   }, [isOpen])
 
@@ -155,6 +181,13 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }, [])
 
+  // モーダルが閉じられた（isOpen が false）ときにもカメラストリームを停止
+  useEffect(() => {
+    if (!isOpen) {
+      stopCamera()
+    }
+  }, [isOpen])
+
   // 写真撮影
   const capturePhoto = () => {
     // フラッシュアニメーション
@@ -168,14 +201,22 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
 
     if (!ctx) return
 
-    // Canvasにビデオフレームを描画
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    ctx.drawImage(video, 0, 0)
+    // iPhoneなどの高解像度を抑制（最大1280pxまでリサイズ）
+    const MAX_SIDE = 1280
+    let w = video.videoWidth
+    let h = video.videoHeight
+    if (Math.max(w, h) > MAX_SIDE) {
+      const scale = MAX_SIDE / Math.max(w, h)
+      w = Math.round(w * scale)
+      h = Math.round(h * scale)
+    }
+    canvas.width = w
+    canvas.height = h
+    ctx.drawImage(video, 0, 0, w, h)
 
-    // Data URLとして取得（高品質JPEG）
-    const dataUrl = canvas.toDataURL('image/jpeg', 1.0)
-    
+    // Data URLとして取得（JPEG品質を0.8に設定してサイズを抑制）
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+
     const newPhoto: CapturedPhoto = {
       id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       dataUrl,
@@ -317,7 +358,14 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
       <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-1 z-20">
         <button onClick={handleClose} className="h-8 px-2 bg-black/70 text-white rounded-lg flex items-center justify-center text-xl">×</button>
         {/* フロント/バック切替 */}
-        <button onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')} className="h-8 px-2 bg-black/70 text-white rounded-lg flex items-center justify-center">
+        <button
+          onClick={() => {
+            // デバイス指定モードを解除して必ず facingMode を適用
+            setSelectedDeviceId(null)
+            setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')
+          }}
+          className="h-8 px-2 bg-black/70 text-white rounded-lg flex items-center justify-center"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <polyline strokeLinecap="round" strokeLinejoin="round" points="23 4 23 10 17 10" />
             <polyline strokeLinecap="round" strokeLinejoin="round" points="1 20 1 14 7 14" />
