@@ -77,6 +77,9 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
 
   // 利用可能なビデオ入力デバイスのリスト
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
+  // 初期動作の完了フラグ（enumerateDevices 後に true になる）
+  const hasInitializedRef = useRef(false)
+
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
@@ -138,6 +141,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
           if (sortedInputs.length > 0 && !selectedDeviceId) {
             setSelectedDeviceId(sortedInputs[0].deviceId)
           }
+          // 初期 enumerate 完了
+          hasInitializedRef.current = true
         })
         .catch(error => {
           console.warn('デバイス取得エラー:', error)
@@ -153,9 +158,9 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }, [selectedDeviceId, isOpen])
 
-  // facingMode変更時にカメラを再起動
+  // facingMode変更時にカメラを再起動（初期起動後のみ）
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && hasInitializedRef.current) {
       stopCamera()
       startCamera()
     }
