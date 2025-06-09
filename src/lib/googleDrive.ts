@@ -143,25 +143,31 @@ export const uploadMultipleFiles = async (
   folderId: string,
   onProgress?: (completed: number, total: number) => void
 ): Promise<string[]> => {
-  const uploadResults: string[] = []
-  
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    try {
-      const fileId = await uploadFile(file.dataUrl, file.fileName, folderId)
-      uploadResults.push(fileId)
-      
-      // 進捗コールバック
-      if (onProgress) {
-        onProgress(i + 1, files.length)
+  const concurrency = 5
+  const results: string[] = new Array(files.length)
+  let currentIndex = 0
+
+  // ワーカー関数: 次のファイルを取得してアップロード
+  const worker = async () => {
+    while (true) {
+      const idx = currentIndex++
+      if (idx >= files.length) break
+
+      const { dataUrl, fileName } = files[idx]
+      try {
+        const fileId = await uploadFile(dataUrl, fileName, folderId)
+        results[idx] = fileId
+        if (onProgress) onProgress(idx + 1, files.length)
+      } catch (error) {
+        console.error(`ファイル ${fileName} のアップロードに失敗:`, error)
+        throw error
       }
-    } catch (error) {
-      console.error(`ファイル ${file.fileName} のアップロードに失敗:`, error)
-      throw error
     }
   }
 
-  return uploadResults
+  // 同時に指定件数をワーカー起動
+  await Promise.all(Array(concurrency).fill(null).map(() => worker()))
+  return results
 }
 
 // 物件用のフォルダ作成とファイルアップロード（メイン関数）
