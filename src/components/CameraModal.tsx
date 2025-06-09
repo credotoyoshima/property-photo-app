@@ -271,49 +271,41 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     setUploadProgress({ current: 0, total: selectedPhotos.length })
 
     try {
-      // APIエンドポイントに写真データを送信
-      const response = await fetch('/api/upload-photos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          propertyId: property.id,
-          propertyName: property.property_name,
-          roomNumber: property.room_number,
-          photos: selectedPhotos.map(photo => ({
-            dataUrl: photo.dataUrl,
-            timestamp: photo.timestamp.toISOString()
-          })),
-          updatedBy: user?.name
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'アップロードに失敗しました')
-      }
-
-      const result = await response.json()
-      
-      if (result.success) {
-        // 成功メッセージを表示
-        alert(`${property.property_name} ${property.room_number}\n保存完了しました。`)
-        
-        // 物件ステータスを更新（親コンポーネントに通知）
-        if (onStatusUpdate) {
-          onStatusUpdate({
-            ...property,
-            status: '撮影済',
-            shooting_datetime: new Date().toISOString(),
-            updated_by: 'カメラアプリ'
+      // 選択された写真を1枚ずつ送信し進捗を更新
+      for (let i = 0; i < selectedPhotos.length; i++) {
+        const photo = selectedPhotos[i]
+        const response = await fetch('/api/upload-photos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            propertyId: property.id,
+            propertyName: property.property_name,
+            roomNumber: property.room_number,
+            photos: [{ dataUrl: photo.dataUrl, timestamp: photo.timestamp.toISOString() }],
+            updatedBy: user?.name
           })
+        })
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `写真${i + 1}のアップロードに失敗しました`)
         }
-        
-        handleClose()
-      } else {
-        throw new Error(result.error || 'アップロードに失敗しました')
+        // 進捗更新
+        setUploadProgress({ current: i + 1, total: selectedPhotos.length })
       }
+      // すべての送信完了
+      alert(`${property.property_name} ${property.room_number}\n${selectedPhotos.length}枚の写真をアップロードしました。`)
+      // 物件ステータスを更新（親コンポーネントに通知）
+      if (onStatusUpdate) {
+        onStatusUpdate({
+          ...property,
+          status: '撮影済',
+          shooting_datetime: new Date().toISOString(),
+          updated_by: 'カメラアプリ'
+        })
+      }
+      handleClose()
     } catch (error) {
       console.error('保存エラー:', error)
       alert(`写真の保存に失敗しました。\n\nエラー: ${error instanceof Error ? error.message : '不明なエラー'}`)
