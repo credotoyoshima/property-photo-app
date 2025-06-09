@@ -383,12 +383,12 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
         {videoDevices.length > 1 && (
           <div className="flex space-x-1 items-center">
             <button
-              onClick={() => setSelectedDeviceId(videoDevices[0].deviceId)}
-              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[0].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
-            >0.5×</button>
-            <button
               onClick={() => setSelectedDeviceId(videoDevices[1].deviceId)}
               className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[1].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+            >0.5×</button>
+            <button
+              onClick={() => setSelectedDeviceId(videoDevices[0].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[0].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
             >1.0×</button>
           </div>
         )}
