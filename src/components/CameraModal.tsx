@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { useUpload } from '@/contexts/UploadContext'
 
 interface Property {
   id: number
@@ -60,9 +61,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   }, [])
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([])
   const [currentView, setCurrentView] = useState<'camera' | 'gallery'>('camera')
-  const [isUploading, setIsUploading] = useState(false)
   const [selectedCount, setSelectedCount] = useState(0)
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
+  const { isUploading, uploadProgress, setUploading, setProgress } = useUpload()
   // シャッターフラッシュ用ステート
   const [isFlashing, setIsFlashing] = useState(false)
   // フロント/バックカメラ切替用ステート
@@ -267,8 +267,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
       return
     }
 
-    setIsUploading(true)
-    setUploadProgress({ current: 0, total: selectedPhotos.length })
+    setUploading(true)
+    setProgress({ current: 0, total: selectedPhotos.length })
 
     try {
       // 選択された写真を1枚ずつ送信し進捗を更新
@@ -292,7 +292,7 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
           throw new Error(errorData.error || `写真${i + 1}のアップロードに失敗しました`)
         }
         // 進捗更新
-        setUploadProgress({ current: i + 1, total: selectedPhotos.length })
+        setProgress({ current: i + 1, total: selectedPhotos.length })
       }
       // すべての送信完了
       alert(`${property.property_name} ${property.room_number}\n${selectedPhotos.length}枚の写真をアップロードしました。`)
@@ -310,8 +310,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
       console.error('保存エラー:', error)
       alert(`写真の保存に失敗しました。\n\nエラー: ${error instanceof Error ? error.message : '不明なエラー'}`)
     } finally {
-      setIsUploading(false)
-      setUploadProgress(null)
+      setUploading(false)
+      setProgress(null)
     }
   }
 

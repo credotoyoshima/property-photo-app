@@ -8,6 +8,7 @@ import EnhancedGoogleMap from '@/components/EnhancedGoogleMap'
 import CameraModal from '@/components/CameraModal'
 import { AuthGuard } from '@/components/AuthGuard'
 import { getScheduledProperties, autoRemoveCompletedProperty } from '@/utils/shootingSchedule'
+import { useUpload } from '@/contexts/UploadContext'
 
 // Property interface
 interface Property {
@@ -100,6 +101,7 @@ function MVPCard({ mvpData, isVisible }: {
 }
 
 export default function MapPage() {
+  const { isUploading, uploadProgress } = useUpload()
   const [properties, setProperties] = useState<Property[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -276,6 +278,13 @@ export default function MapPage() {
           filterState={isFilterOn}
           onLogoClick={handleToggleMVPCard}
         />
+        
+        {/* アップロード進捗バー */}
+        {isUploading && uploadProgress && (
+          <div className="w-full bg-primary text-primary-foreground text-center py-2 text-sm font-medium">
+            アップロード中… {uploadProgress.current}/{uploadProgress.total}
+          </div>
+        )}
         
         {/* MVPカード */}
         <MVPCard

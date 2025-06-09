@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { APP_CONFIG } from "@/lib/utils/constants";
+import { UploadProvider } from '@/contexts/UploadContext'
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,9 +41,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={inter.className}>
-        <div className="min-h-screen bg-background">
-          {children}
-        </div>
+        <UploadProvider>
+          <div className="min-h-screen bg-background">
+            {children}
+          </div>
+        </UploadProvider>
       </body>
     </html>
   );
