@@ -79,6 +79,9 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   // 初期動作の完了フラグ（enumerateDevices 後に true になる）
   const hasInitializedRef = useRef(false)
+  // 環境／内側カメラそれぞれの選択状態を保持
+  const envSelectedDeviceRef = useRef<string | null>(null)
+  const userSelectedDeviceRef = useRef<string | null>(null)
 
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
@@ -142,6 +145,7 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
           // 最初はバックカメラを選択
           if (sortedInputs.length > 0 && !selectedDeviceId) {
             setSelectedDeviceId(sortedInputs[0].deviceId)
+            envSelectedDeviceRef.current = sortedInputs[0].deviceId
           }
           // 初期 enumerate 完了
           hasInitializedRef.current = true
@@ -152,21 +156,24 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     }
   }, [isOpen])
 
-  // 選択デバイス変更時はカメラを再起動
+  // selectedDeviceId が変わったら、現在の facingMode によって ref に記憶
   useEffect(() => {
-    if (isOpen && selectedDeviceId) {
-      stopCamera()
-      startCamera()
+    if (selectedDeviceId) {
+      if (facingMode === 'environment') {
+        envSelectedDeviceRef.current = selectedDeviceId
+      } else {
+        userSelectedDeviceRef.current = selectedDeviceId
+      }
     }
-  }, [selectedDeviceId, isOpen])
+  }, [selectedDeviceId, facingMode])
 
-  // facingMode変更時にカメラを再起動（初期起動後のみ）
+  // facingMode変更時にカメラを再起動（初期起動後＆deviceId未指定時のみ）
   useEffect(() => {
-    if (isOpen && hasInitializedRef.current) {
+    if (isOpen && hasInitializedRef.current && !selectedDeviceId) {
       stopCamera()
       startCamera()
     }
-  }, [facingMode, isOpen])
+  }, [facingMode, isOpen, selectedDeviceId])
 
   // カメラストリーム停止
   const stopCamera = () => {
@@ -367,9 +374,14 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
         {/* フロント/バック切替 */}
         <button
           onClick={() => {
-            // デバイス指定モードを解除して必ず facingMode を適用
-            setSelectedDeviceId(null)
-            setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')
+            // facingMode を切り替え、新しいモードの最後に記憶した deviceId を復元
+            const nextMode = facingMode === 'environment' ? 'user' : 'environment'
+            setFacingMode(nextMode)
+            // 好みのカメラデバイスを復元
+            const restoreId = nextMode === 'environment'
+              ? envSelectedDeviceRef.current
+              : userSelectedDeviceRef.current
+            setSelectedDeviceId(restoreId)
           }}
           className="h-8 px-2 bg-black/70 text-white rounded-lg flex items-center justify-center"
         >
