@@ -12,7 +12,7 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await params
-/    const propertyId = resolvedParams.id  // string ID from sheet
+    const propertyId = resolvedParams.id  // string ID from sheet
     const body = await request.json()
     const { action } = body
 
