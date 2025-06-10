@@ -1,5 +1,5 @@
 export interface Property {
-  id: number
+  id: string
   property_name: string
   room_number: string
   address: string
@@ -35,7 +35,7 @@ export interface CreatePropertyData {
 }
 
 export interface UpdatePropertyData extends Partial<CreatePropertyData> {
-  id: number
+  id: string
   status?: '未撮影' | '撮影済み'
   shooting_datetime?: string
   updated_by?: string

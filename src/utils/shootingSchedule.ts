@@ -1,7 +1,7 @@
 // 撮影予定物件の管理ユーティリティ
 
 export interface ScheduledProperty {
-  id: number
+  id: string
   propertyName: string
   roomNumber: string
   address: string
@@ -23,22 +23,22 @@ export const getScheduledProperties = (): ScheduledProperty[] => {
 
 // 撮影予定に物件を追加
 export const addToSchedule = (property: {
-  id: number
+  id: number | string
   property_name: string
   room_number: string
   address: string
 }): boolean => {
   try {
     const currentSchedule = getScheduledProperties()
-    
-    // 既に追加済みかチェック
-    const isAlreadyAdded = currentSchedule.some(item => item.id === property.id)
+    const id = String(property.id)
+    // 既に追加済みかチェック（文字列比較）
+    const isAlreadyAdded = currentSchedule.some(item => item.id === id)
     if (isAlreadyAdded) {
       return false // 既に追加済み
     }
 
     const newItem: ScheduledProperty = {
-      id: property.id,
+      id: id,
       propertyName: property.property_name,
       roomNumber: property.room_number,
       address: property.address,
@@ -55,10 +55,11 @@ export const addToSchedule = (property: {
 }
 
 // 撮影予定から物件を削除
-export const removeFromSchedule = (propertyId: number): boolean => {
+export const removeFromSchedule = (propertyId: number | string): boolean => {
   try {
+    const id = String(propertyId)
     const currentSchedule = getScheduledProperties()
-    const updatedSchedule = currentSchedule.filter(item => item.id !== propertyId)
+    const updatedSchedule = currentSchedule.filter(item => item.id !== id)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSchedule))
     return true
   } catch (error) {
@@ -68,10 +69,10 @@ export const removeFromSchedule = (propertyId: number): boolean => {
 }
 
 // 物件が撮影予定に追加されているかチェック
-export const isInSchedule = (propertyId: number): boolean => {
+export const isInSchedule = (propertyId: number | string): boolean => {
   try {
-    const currentSchedule = getScheduledProperties()
-    return currentSchedule.some(item => item.id === propertyId)
+    const id = String(propertyId)
+    return getScheduledProperties().some(item => item.id === id)
   } catch (error) {
     console.error('撮影予定チェックエラー:', error)
     return false
@@ -95,13 +96,14 @@ export const getScheduleCount = (): number => {
 }
 
 // 撮影完了時の自動削除（ステータスが「撮影済」になった物件を撮影予定から削除）
-export const autoRemoveCompletedProperty = (propertyId: number): boolean => {
+export const autoRemoveCompletedProperty = (propertyId: number | string): boolean => {
   try {
+    const id = String(propertyId)
     const currentSchedule = getScheduledProperties()
-    const wasInSchedule = currentSchedule.some(item => item.id === propertyId)
+    const wasInSchedule = currentSchedule.some(item => item.id === id)
     
     if (wasInSchedule) {
-      const updatedSchedule = currentSchedule.filter(item => item.id !== propertyId)
+      const updatedSchedule = currentSchedule.filter(item => item.id !== id)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSchedule))
       console.log(`撮影完了により物件ID ${propertyId} を撮影予定から自動削除しました`)
       return true

@@ -97,7 +97,7 @@ export async function getPropertiesFromSheet() {
       }
       
       return {
-        id: parseInt(row[0]) || index + 1,              // A列: id
+        id: row[0]?.toString() || (index + 1).toString(), // A列: string id
         property_name: row[1] || '',                    // B列: property_name
         room_number: row[2] || '',                      // C列: room_number
         address: row[3] || '',                          // D列: address
@@ -132,7 +132,7 @@ export async function getPropertiesFromSheet() {
 }
 
 // 単一物件をIDで取得（最適化版）
-export async function getPropertyById(propertyId: number) {
+export async function getPropertyById(propertyId: string) {
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
@@ -141,8 +141,18 @@ export async function getPropertyById(propertyId: number) {
       throw new Error('Spreadsheet ID is not configured')
     }
 
-    // 特定の行のみ取得（行番号 = propertyId + 1）
-    const rowNumber = propertyId + 1
+    // ID列を検索してシート内の行番号を特定
+    const idColumnRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Properties!A2:A',
+    })
+    const idRows = idColumnRes.data.values || []
+    const rowIndex = idRows.findIndex(r => r[0] === propertyId)
+    if (rowIndex === -1) {
+      return null
+    }
+    const rowNumber = rowIndex + 2 // ヘッダー行を除くため+2
+
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `Properties!A${rowNumber}:Z${rowNumber}`,
@@ -169,7 +179,7 @@ export async function getPropertyById(propertyId: number) {
     }
     
     return {
-      id: parseInt(row[0]) || propertyId,
+      id: row[0]?.toString() || propertyId,
       property_name: row[1] || '',
       room_number: row[2] || '',
       address: row[3] || '',
@@ -287,7 +297,7 @@ export async function updatePropertyStatus(propertyId: number, status: string, s
     }
 
     // 更新後の物件データを取得して返す
-    const updatedProperty = await getPropertyById(propertyId)
+    const updatedProperty = await getPropertyById(propertyId.toString())
     return updatedProperty
   } catch (error) {
     console.error('Error updating property status:', error)
@@ -482,7 +492,7 @@ export async function updateProperty(propertyId: number, updateData: {
     }
 
     // 現在の物件データを取得
-    const currentProperty = await getPropertyById(propertyId)
+    const currentProperty = await getPropertyById(propertyId.toString())
     if (!currentProperty) {
       throw new Error('Property not found')
     }
@@ -529,7 +539,7 @@ export async function updateProperty(propertyId: number, updateData: {
     })
 
     // 更新後の物件データを取得して返す
-    const updatedProperty = await getPropertyById(propertyId)
+    const updatedProperty = await getPropertyById(propertyId.toString())
     return updatedProperty
   } catch (error) {
     console.error('Error updating property:', error)
@@ -562,7 +572,7 @@ export async function updatePropertyMemo(propertyId: number, memo: string, updat
     })
 
     // 更新後の物件データを取得して返す
-    const updatedProperty = await getPropertyById(propertyId)
+    const updatedProperty = await getPropertyById(propertyId.toString())
     return updatedProperty
   } catch (error) {
     console.error('Error updating property memo:', error)
@@ -762,7 +772,7 @@ export async function initializeBothSpreadsheets() {
 }
 
 // 鍵管理のステータス更新機能を追加
-export async function updatePropertyKeyStatus(propertyId: number, action: 'rent' | 'return' | 'reset', rented_by?: string) {
+export async function updatePropertyKeyStatus(propertyId: string, action: 'rent' | 'return' | 'reset', rented_by?: string) {
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
@@ -771,19 +781,18 @@ export async function updatePropertyKeyStatus(propertyId: number, action: 'rent'
       throw new Error('Spreadsheet ID is not configured')
     }
 
-    // 物件情報を取得して対象の行を特定
+    // 物件情報を取得して対象の行を特定（文字列IDで検索）
     const properties = await getPropertiesFromSheet()
-    const property = properties.find(p => p.id === propertyId)
-    
-    if (!property) {
+    const index = properties.findIndex(p => p.id === propertyId)
+    if (index === -1) {
       return null
     }
+    const property = properties[index]
+    // 行番号を計算（ヘッダー行を除くため+2）
+    const rowNumber = index + 2
 
-    // 行番号を計算（ヘッダー行を考慮）
-    const rowNumber = propertyId + 1
-    
     const now = getJapanTime()
-    
+
     if (action === 'rent') {
       // 鍵をレンタルする場合
       const updates = [
@@ -875,7 +884,7 @@ export async function updatePropertyKeyStatus(propertyId: number, action: 'rent'
     }
 
     // 更新後の物件情報を返す
-    let updatedProperty
+    let updatedProperty: any
     if (action === 'reset') {
       updatedProperty = {
         ...property,

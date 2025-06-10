@@ -12,11 +12,11 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await params
-    const propertyId = parseInt(resolvedParams.id)
+/    const propertyId = resolvedParams.id  // string ID from sheet
     const body = await request.json()
     const { action } = body
 
-    if (isNaN(propertyId)) {
+    if (!propertyId) {
       return NextResponse.json(
         { error: 'Invalid property ID' },
         { status: 400 }
