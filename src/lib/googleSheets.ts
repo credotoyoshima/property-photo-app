@@ -230,6 +230,14 @@ export async function updatePropertyStatus(propertyId: string, status: string, s
     }
     const rowNumber = index + 2 // ヘッダー行を除くため+2
 
+    // ステータス (G列) を更新
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Properties!G${rowNumber}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[status]] }
+    })
+    
     const now = getJapanTime()
     
     if (status === '撮影済') {
