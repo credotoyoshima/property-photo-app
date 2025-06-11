@@ -298,12 +298,26 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
       alert(`${property.property_name} ${property.room_number}\n${selectedPhotos.length}枚の写真をアップロードしました。`)
       // 物件ステータスを更新（親コンポーネントに通知）
       if (onStatusUpdate) {
-        onStatusUpdate({
-          ...property,
-          status: '撮影済',
-          shooting_datetime: new Date().toISOString(),
-          updated_by: 'カメラアプリ'
-        })
+        try {
+          // ステータスをサーバー側シートに反映
+          const statusResponse = await fetch(`/api/properties/${property.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              status: '撮影済',
+              shooting_datetime: new Date().toISOString(),
+              updated_by: user?.name || 'システム'
+            })
+          })
+          if (statusResponse.ok) {
+            const updatedProperty = await statusResponse.json()
+            onStatusUpdate(updatedProperty)
+          } else {
+            console.warn('ステータス更新APIエラー', await statusResponse.text())
+          }
+        } catch (err) {
+          console.error('ステータス更新エラー:', err)
+        }
       }
       handleClose()
     } catch (error) {

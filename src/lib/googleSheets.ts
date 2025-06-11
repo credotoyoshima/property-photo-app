@@ -213,7 +213,7 @@ export async function getPropertyById(propertyId: string) {
 }
 
 // 物件の撮影ステータスを更新
-export async function updatePropertyStatus(propertyId: number, status: string, shooting_datetime?: string, updatedBy: string = 'システム') {
+export async function updatePropertyStatus(propertyId: string, status: string, shooting_datetime?: string, updatedBy: string = 'システム') {
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
@@ -222,20 +222,16 @@ export async function updatePropertyStatus(propertyId: number, status: string, s
       throw new Error('Spreadsheet ID is not configured')
     }
 
-    // 該当する行を見つけて更新
-    const rowNumber = propertyId + 1 // ヘッダー行があるため+1
-    
-    // ステータス (G列) を更新
-    const statusRange = `Properties!G${rowNumber}`
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: statusRange,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[status]],
-      },
-    })
+    // 物件情報を取得し、文字列IDで行番号を算出
+    const properties = await getPropertiesFromSheet()
+    const index = properties.findIndex(p => p.id === propertyId)
+    if (index === -1) {
+      throw new Error('Property not found')
+    }
+    const rowNumber = index + 2 // ヘッダー行を除くため+2
 
+    const now = getJapanTime()
+    
     if (status === '撮影済') {
       // 撮影済の場合：shooting_datetimeとupdated_byを設定
       const shootingTime = shooting_datetime || getJapanTime()
@@ -297,7 +293,7 @@ export async function updatePropertyStatus(propertyId: number, status: string, s
     }
 
     // 更新後の物件データを取得して返す
-    const updatedProperty = await getPropertyById(propertyId.toString())
+    const updatedProperty = await getPropertyById(propertyId)
     return updatedProperty
   } catch (error) {
     console.error('Error updating property status:', error)
@@ -548,7 +544,7 @@ export async function updateProperty(propertyId: number, updateData: {
 }
 
 // メモのみを更新
-export async function updatePropertyMemo(propertyId: number, memo: string, updatedBy: string = 'システム') {
+export async function updatePropertyMemo(propertyId: string, memo: string, updatedBy: string = 'システム') {
   try {
     const sheets = getGoogleSheetsClient()
     const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
@@ -557,8 +553,13 @@ export async function updatePropertyMemo(propertyId: number, memo: string, updat
       throw new Error('Spreadsheet ID is not configured')
     }
 
-    // 該当する行を見つけて更新
-    const rowNumber = propertyId + 1 // ヘッダー行があるため+1
+    // 物件情報を取得し文字列IDで行番号を算出
+    const properties = await getPropertiesFromSheet()
+    const index = properties.findIndex(p => p.id === propertyId)
+    if (index === -1) {
+      throw new Error('Property not found')
+    }
+    const rowNumber = index + 2 // ヘッダー行を除くため+2
     
     // メモ (H列) のみを更新
     const memoRange = `Properties!H${rowNumber}`
@@ -572,7 +573,7 @@ export async function updatePropertyMemo(propertyId: number, memo: string, updat
     })
 
     // 更新後の物件データを取得して返す
-    const updatedProperty = await getPropertyById(propertyId.toString())
+    const updatedProperty = await getPropertyById(propertyId)
     return updatedProperty
   } catch (error) {
     console.error('Error updating property memo:', error)
@@ -790,9 +791,9 @@ export async function updatePropertyKeyStatus(propertyId: string, action: 'rent'
     const property = properties[index]
     // 行番号を計算（ヘッダー行を除くため+2）
     const rowNumber = index + 2
-
+    
     const now = getJapanTime()
-
+    
     if (action === 'rent') {
       // 鍵をレンタルする場合
       const updates = [

@@ -8,9 +8,9 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params
-    const propertyId = parseInt(resolvedParams.id)
+    const propertyId = resolvedParams.id // string ID from sheet
     
-    if (isNaN(propertyId)) {
+    if (!propertyId) {
       return NextResponse.json(
         { error: 'Invalid property ID' },
         { status: 400 }
@@ -43,11 +43,11 @@ export async function PUT(
 ) {
   try {
     const resolvedParams = await params
-    const propertyId = parseInt(resolvedParams.id)
+    const propertyId = resolvedParams.id // string ID from sheet
     const body = await request.json()
     const { memo, updated_by } = body
 
-    if (isNaN(propertyId)) {
+    if (!propertyId) {
       return NextResponse.json(
         { error: 'Invalid property ID' },
         { status: 400 }
@@ -80,7 +80,7 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await params
-    const propertyId = parseInt(resolvedParams.id)
+    const propertyId = resolvedParams.id
     const body = await request.json()
     const { status, shooting_datetime, updated_by } = body
 
