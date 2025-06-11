@@ -235,7 +235,7 @@ export default function MapPage() {
     } else if (isFilterOn === 2) {
       // 撮影予定物件のみ表示
       const scheduledProperties = getScheduledProperties()
-      return scheduledProperties.some(scheduled => scheduled.id === property.id)
+      return scheduledProperties.some(scheduled => scheduled.id === String(property.id))
     }
     // すべて表示
     return true

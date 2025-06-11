@@ -130,9 +130,9 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
     }
   }
 
-  // 案内方法が「鍵取り」でkey_agent_phoneがある場合、業者情報を取得
+  // 案内方法に「鍵取り」が含まれていてkey_agent_phoneがある場合、業者情報を取得
   useEffect(() => {
-    if (property.access_method === '鍵取り' && property.key_agent_phone) {
+    if (property.access_method?.includes('鍵取り') && property.key_agent_phone) {
       fetchKeyAgentInfo(property.key_agent_phone)
     } else {
       setKeyAgentInfo(null)
@@ -553,8 +553,8 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
               <p className="text-sm text-gray-900">{property.access_method || '-'}</p>
             </div>
 
-            {/* 鍵預かり業者（案内方法が「鍵取り」の場合のみ表示） */}
-            {property.access_method === '鍵取り' && property.key_agent_phone && (
+            {/* 鍵預かり業者（案内方法に「鍵取り」が含まれている場合のみ表示） */}
+            {property.access_method?.includes('鍵取り') && property.key_agent_phone && (
               <>
                 {/* 区切り線 */}
                 <div className="border-t border-gray-200 my-0.5 mx-2"></div>
@@ -715,7 +715,8 @@ function PropertyDetailCard({ propertyGroup, onClose, onEdit, onBackToProperty, 
 
   // 選択された部屋が変更された時、鍵預かり業者情報を取得
   useEffect(() => {
-    if (selectedRoom.access_method === '鍵取り' && selectedRoom.key_agent_phone) {
+    if (selectedRoom.access_method?.includes('鍵取り') && selectedRoom.key_agent_phone) {
+      // 案内方法が鍵取りの場合は鍵預かり業者情報を取得
       fetchKeyAgentInfo(selectedRoom.key_agent_phone)
     } else {
       setKeyAgentInfo(null)
@@ -931,8 +932,8 @@ function PropertyDetailCard({ propertyGroup, onClose, onEdit, onBackToProperty, 
             </div>
           )}
 
-          {/* 鍵預かり業者（案内方法が「鍵取り」の場合のみ表示） */}
-          {selectedRoom.access_method === '鍵取り' && selectedRoom.key_agent_phone && (
+          {/* 鍵預かり業者（案内方法に「鍵取り」が含まれている場合のみ表示） */}
+          {selectedRoom.access_method?.includes('鍵取り') && selectedRoom.key_agent_phone && (
             <div>
               <h3 className="text-xs font-bold text-gray-600 mb-1">鍵預かり業者</h3>
               {isLoadingKeyAgent ? (
@@ -1407,7 +1408,7 @@ export default function EnhancedGoogleMap({
     // 撮影予定に含まれているかチェック
     const scheduledProperties = getScheduledProperties()
     const hasScheduledRoom = propertyGroup?.rooms.some(room => 
-      scheduledProperties.some(scheduled => scheduled.id === room.id)
+      scheduledProperties.some(scheduled => scheduled.id === room.id.toString())
     ) || false
     
     return {
@@ -1815,8 +1816,8 @@ export default function EnhancedGoogleMap({
 
     // 撮影予定物件の中で鍵預かり業者がある物件を処理
     scheduledProperties.forEach((scheduledProperty) => {
-      const property = properties.find(p => p.id === scheduledProperty.id)
-      if (property && property.key_agent_phone && property.access_method === '鍵取り') {
+      const property = properties.find(p => String(p.id) === scheduledProperty.id)
+      if (property && property.key_agent_phone && property.access_method?.includes('鍵取り')) {
         // 業者情報を収集（同一業者の物件数もカウント）
         const key = property.key_agent_phone
         if (keyAgentMap.has(key)) {
