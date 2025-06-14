@@ -83,10 +83,21 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
-  // Define environmentDevices and regexes for camera selection
+  // Define regexes for lens types and filter/sort back-facing cameras
   const backRegex = /back|rear|environment|後置|背面/i
   const frontRegex = /front|user|前置/i
-  const environmentDevices = videoDevices.filter(device => backRegex.test(device.label))
+  const wideAngleRegex = /wide[- ]?angle|builtInWideAngleCamera/i
+  const ultraWideRegex = /ultra[- ]?wide|builtInUltraWideCamera/i
+  const environmentDevices = videoDevices
+    .filter(device => backRegex.test(device.label))
+    .sort((a, b) => {
+      const getPriority = (label: string) => {
+        if (wideAngleRegex.test(label)) return 0
+        if (ultraWideRegex.test(label)) return 1
+        return 2
+      }
+      return getPriority(a.label) - getPriority(b.label)
+    })
 
   // カメラストリーム開始
   const startCamera = async () => {
@@ -142,9 +153,11 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
             return score(labelA) - score(labelB)
           })
           setVideoDevices(sortedInputs)
-          // 最初はバックカメラを選択
-          if (sortedInputs.length > 0 && !selectedDeviceId) {
-            setSelectedDeviceId(sortedInputs[0].deviceId)
+          // 最初はワイドレンズ（wide-angle）を優先したバックカメラを選択
+          if (!selectedDeviceId) {
+            const backDevices = sortedInputs.filter(d => backRegex.test(d.label))
+            const defaultDevice = backDevices.find(d => wideAngleRegex.test(d.label)) || backDevices[0]
+            if (defaultDevice) setSelectedDeviceId(defaultDevice.deviceId)
           }
           // 初期 enumerate 完了
           hasInitializedRef.current = true
