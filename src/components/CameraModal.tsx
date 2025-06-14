@@ -208,8 +208,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
 
     if (!ctx) return
 
-    // iPhoneなどの高解像度を抑制（最大1280pxまでリサイズ）
-    const MAX_SIDE = 1280
+    // iPhoneなどの高解像度を抑制（最大1440pxまでリサイズ）
+    const MAX_SIDE = 1440
     let w = video.videoWidth
     let h = video.videoHeight
     if (Math.max(w, h) > MAX_SIDE) {
@@ -221,8 +221,8 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     canvas.height = h
     ctx.drawImage(video, 0, 0, w, h)
 
-    // Data URLとして取得（JPEG品質を0.8に設定してサイズを抑制）
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+    // Data URLとして取得（JPEG品質を0.85に設定してサイズを抑制）
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
 
     const newPhoto: CapturedPhoto = {
       id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
