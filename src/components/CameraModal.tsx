@@ -83,26 +83,10 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
-  // 修正: より堅牢なカメラ判定
+  // Define environmentDevices and regexes for camera selection
+  const backRegex = /back|rear|environment|後置|背面|wide|ultra|広角|ウルトラ/i
   const frontRegex = /front|user|前置/i
-  const backRegex = /back|rear|environment|後置|背面|wide|広角|ultra|ウルトラ/i
-  
-  // 修正: フロント以外を背面とみなす（より確実な方法）
-  const environmentDevices = videoDevices.filter(device => !frontRegex.test(device.label))
-  
-  // デバッグ用：カメラデバイスの詳細をログ出力
-  useEffect(() => {
-    if (videoDevices.length > 0) {
-      console.log('[CameraModal] 検出されたカメラデバイス:')
-      videoDevices.forEach((device, index) => {
-        console.log(`  ${index}: ${device.label} (ID: ${device.deviceId})`)
-      })
-      console.log('[CameraModal] 背面カメラとして判定されたデバイス:')
-      environmentDevices.forEach((device, index) => {
-        console.log(`  ${index}: ${device.label} (ID: ${device.deviceId})`)
-      })
-    }
-  }, [videoDevices, environmentDevices])
+  const environmentDevices = videoDevices.filter(device => backRegex.test(device.label))
 
   // カメラストリーム開始
   const startCamera = async () => {
@@ -146,47 +130,22 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
         })
         .then(devices => {
           const videoInputs = devices.filter(d => d.kind === 'videoinput')
-          
-          // 修正: より堅牢なソート関数
+          // ラベルに基づき、バックカメラを最優先、それ以外を後回しにソート
           const sortedInputs = [...videoInputs].sort((a, b) => {
             const labelA = a.label
             const labelB = b.label
-            
-            // フロントカメラは後回し
-            const isAFront = frontRegex.test(labelA)
-            const isBFront = frontRegex.test(labelB)
-            
-            if (isAFront && !isBFront) return 1
-            if (!isAFront && isBFront) return -1
-            
-            // 両方とも背面カメラの場合、メインカメラを優先
-            if (!isAFront && !isBFront) {
-              // "Back Camera"や"Main"などのメインカメラを優先
-              const isAMain = /back camera|main|メイン/i.test(labelA)
-              const isBMain = /back camera|main|メイン/i.test(labelB)
-              
-              if (isAMain && !isBMain) return -1
-              if (!isAMain && isBMain) return 1
-              
-              // "Ultra Wide"は2番目に配置
-              const isAUltra = /ultra.*wide|超広角/i.test(labelA)
-              const isBUltra = /ultra.*wide|超広角/i.test(labelB)
-              
-              if (isAUltra && !isBUltra) return 1
-              if (!isAUltra && isBUltra) return -1
+            const score = (label: string) => {
+              if (backRegex.test(label)) return 0
+              if (frontRegex.test(label)) return 1
+              return 2
             }
-            
-            return 0
+            return score(labelA) - score(labelB)
           })
-          
           setVideoDevices(sortedInputs)
-          
-          // 背面カメラがある場合は最初の背面カメラを選択
-          const firstBackCamera = sortedInputs.find(device => !frontRegex.test(device.label))
-          if (firstBackCamera && !selectedDeviceId) {
-            setSelectedDeviceId(firstBackCamera.deviceId)
+          // 最初はバックカメラを選択
+          if (sortedInputs.length > 0 && !selectedDeviceId) {
+            setSelectedDeviceId(sortedInputs[0].deviceId)
           }
-          
           // 初期 enumerate 完了
           hasInitializedRef.current = true
         })
@@ -416,31 +375,16 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
             <path strokeLinecap="round" strokeLinejoin="round" d="M20.49 15a9 9 0 01-14.13 3.36L1 14" />
           </svg>
         </button>
-        {/* 修正: 背面カメラが2台以上ある場合のみズームボタンを表示 */}
-        {environmentDevices.length >= 2 && (
+        {environmentDevices.length > 1 && (
           <div className="flex space-x-1 items-center">
-            {/* 0.5×ボタン（2番目の背面カメラ、通常は超広角） */}
             <button
-              onClick={() => setSelectedDeviceId(environmentDevices[1]?.deviceId)}
-              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${
-                selectedDeviceId === environmentDevices[1]?.deviceId 
-                ? 'text-yellow-400 text-sm' 
-                : 'text-white text-xs'
-              }`}
-            >
-              0.5×
-            </button>
-            {/* 1.0×ボタン（1番目の背面カメラ、通常はメイン） */}
+              onClick={() => setSelectedDeviceId(environmentDevices[1].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === environmentDevices[1].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+            >0.5×</button>
             <button
-              onClick={() => setSelectedDeviceId(environmentDevices[0]?.deviceId)}
-              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${
-                selectedDeviceId === environmentDevices[0]?.deviceId 
-                ? 'text-yellow-400 text-sm' 
-                : 'text-white text-xs'
-              }`}
-            >
-              1.0×
-            </button>
+              onClick={() => setSelectedDeviceId(environmentDevices[0].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === environmentDevices[0].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+            >1.0×</button>
           </div>
         )}
         <button onClick={() => setCurrentView('gallery')} className="h-8 px-3 bg-black/70 text-white rounded-lg flex items-center justify-center text-sm">
@@ -535,4 +479,4 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
     </div>,
     document.body
   )
-}
+} 
