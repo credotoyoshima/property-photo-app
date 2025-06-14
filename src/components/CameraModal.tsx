@@ -83,6 +83,11 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
   // 選択中のデバイスID（標準カメラ or 広角）
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
+  // Define environmentDevices and regexes for camera selection
+  const backRegex = /back|rear|environment|後置|背面/i
+  const frontRegex = /front|user|前置/i
+  const environmentDevices = videoDevices.filter(device => backRegex.test(device.label))
+
   // カメラストリーム開始
   const startCamera = async () => {
     try {
@@ -126,8 +131,6 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
         .then(devices => {
           const videoInputs = devices.filter(d => d.kind === 'videoinput')
           // ラベルに基づき、バックカメラを最優先、それ以外を後回しにソート
-          const backRegex = /back|rear|environment|後置|背面/i
-          const frontRegex = /front|user|前置/i
           const sortedInputs = [...videoInputs].sort((a, b) => {
             const labelA = a.label
             const labelB = b.label
@@ -372,15 +375,15 @@ export default function CameraModal({ property, isOpen, onClose, onSave, onStatu
             <path strokeLinecap="round" strokeLinejoin="round" d="M20.49 15a9 9 0 01-14.13 3.36L1 14" />
           </svg>
         </button>
-        {videoDevices.length > 1 && (
+        {environmentDevices.length > 1 && (
           <div className="flex space-x-1 items-center">
             <button
-              onClick={() => setSelectedDeviceId(videoDevices[1].deviceId)}
-              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[1].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+              onClick={() => setSelectedDeviceId(environmentDevices[1].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === environmentDevices[1].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
             >0.5×</button>
             <button
-              onClick={() => setSelectedDeviceId(videoDevices[0].deviceId)}
-              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === videoDevices[0].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
+              onClick={() => setSelectedDeviceId(environmentDevices[0].deviceId)}
+              className={`h-8 px-2 bg-black/70 rounded-lg flex items-center justify-center ${selectedDeviceId === environmentDevices[0].deviceId ? 'text-yellow-400 text-sm' : 'text-white text-xs'}`}
             >1.0×</button>
           </div>
         )}
