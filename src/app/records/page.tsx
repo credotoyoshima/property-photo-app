@@ -378,13 +378,13 @@ export default function ShootingRecordsPage() {
         isFilterOn={listType === 'keys'}
       />
       
-      <div className="flex-1 container mx-auto px-6 py-2">
+      <div className="flex-1 container mx-auto px-6 py-2 flex flex-col">
         {isLoading ? (
           // スケルトンローディング表示
           <RecordsSkeleton />
         ) : (
           /* 統合コンポーネント - 囲み線削除 */
-          <div className="space-y-2">
+          <div className="flex flex-col space-y-2 flex-1 overflow-hidden">
             {/* セクション2: フィルター（店舗・担当者のみ） */}
             <div className="py-2">
               {/* 店舗・担当者選択 */}
@@ -479,7 +479,7 @@ export default function ShootingRecordsPage() {
                 </div>
                 
                 {/* スクロール可能なリスト */}
-                <div className="divide-y divide-gray-300 max-h-96 overflow-y-auto border-t border-b border-gray-300">
+                <div className="divide-y divide-gray-300 overflow-y-auto border-t border-b border-gray-300 flex-1">
                   {listType === 'shooting' ? (
                     // 撮影完了リスト
                     filteredRecords.map((record, index) => (
