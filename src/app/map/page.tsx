@@ -118,7 +118,7 @@ export default function MapPage() {
       return 0
     }
   })
-  const [mvpData, setMVPData] = useState<MVPData | null>(null)
+  const [mvpData, setMVPData] = useState<MVPData>({ today: null, monthly: null })
   const [isMVPCardVisible, setIsMVPCardVisible] = useState(true)
 
   const router = useRouter()
@@ -132,28 +132,63 @@ export default function MapPage() {
     }
   }, [isFilterOn])
 
+  // 本日MVPをローカル計算する関数
+  const recalcLocalMVP = (allProperties: Property[]) => {
+    const jstOffset = 9 * 60 * 60 * 1000
+    const todayJST = new Date(Date.now() + jstOffset).toISOString().split('T')[0]
+    const counts = allProperties.reduce<Record<string, number>>((acc, p) => {
+      if (p.status === '撮影済' && p.shooting_datetime) {
+        try {
+          const dt = new Date(p.shooting_datetime)
+          const dateStr = new Date(dt.getTime() + jstOffset).toISOString().split('T')[0]
+          if (dateStr === todayJST) {
+            const name = p.updated_by || ''
+            acc[name] = (acc[name] || 0) + 1
+          }
+        } catch {}
+      }
+      return acc
+    }, {})
+    let today: MVPData['today'] = null
+    const entries = Object.entries(counts)
+    if (entries.length > 0) {
+      const [name, count] = entries.sort(([, a], [, b]) => b - a)[0]
+      today = { name, store: '', count }
+    }
+    setMVPData(prev => ({ today, monthly: prev.monthly }))
+  }
+
   // データ取得（最適化版）
   const fetchData = async () => {
     try {
       setIsLoading(true)
       
-      // 並列でプロパティとMVPデータを取得
+      // 並列でプロパティと月間MVPデータを取得
       const [propertiesRes, mvpRes] = await Promise.all([
         fetch('/api/properties'),
         fetch('/api/mvp')
       ])
-      
+
+      // 月間MVP更新
+      let monthly: MVPData['monthly'] = null
+      if (mvpRes.ok) {
+        const res = await mvpRes.json()
+        if (res.success) {
+          monthly = res.mvp.monthly
+        }
+      }
+      setMVPData(prev => ({ ...prev, monthly }))
+
+      // プロパティ一覧更新
       if (propertiesRes.ok) {
         const data = await propertiesRes.json()
         const allProperties = data.properties || data
         setProperties(allProperties)
-      }
-      
-      if (mvpRes.ok) {
-        const mvpData = await mvpRes.json()
-        if (mvpData.success) {
-          setMVPData(mvpData.mvp)
-        }
+        // 本日MVPをローカル計算
+        recalcLocalMVP(allProperties)
+      } else {
+        // プロパティ取得失敗時は本日MVPをクリア
+        recalcLocalMVP([])
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -209,8 +244,12 @@ export default function MapPage() {
       // 撮影予定変更イベントを発火
       window.dispatchEvent(new CustomEvent('scheduledPropertiesChanged'))
     }
-    // プロパティリストを更新
-    setProperties(prev => prev.map(p => p.id === updatedProperty.id ? updatedProperty : p))
+    // プロパティリストを更新し本日MVPを再計算
+    setProperties(prev => {
+      const next = prev.map(p => p.id === updatedProperty.id ? updatedProperty : p)
+      recalcLocalMVP(next)
+      return next
+    })
     // モーダルを閉じる
     setIsCameraOpen(false)
     setCameraProperty(null)
