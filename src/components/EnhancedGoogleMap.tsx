@@ -430,7 +430,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-50 bg-white flex flex-col min-h-0">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -480,7 +480,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
       </div>
 
       {/* Content - フレックスレイアウトで残り領域を使用 */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="p-3 pb-6">
           <div className="grid grid-cols-1 gap-1 max-w-2xl mx-auto">
             {/* 物件名とステータスを1行に表示 */}
