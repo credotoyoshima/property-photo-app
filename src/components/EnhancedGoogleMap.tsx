@@ -61,6 +61,7 @@ interface Property {
   key_rented_at?: string
   key_returned_at?: string
   key_rented_by?: string
+  deleted?: boolean  // AB列の削除フラグ
 }
 
 interface PropertyGroup {
@@ -106,6 +107,8 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
     longitude: number
   } | null>(null)
   const [isLoadingKeyAgent, setIsLoadingKeyAgent] = useState(false)
+  const [isMarkingDelete, setIsMarkingDelete] = useState(false)
+  const [isDeleteScheduled, setIsDeleteScheduled] = useState<boolean>(() => Boolean(property.deleted))
 
   // ログインユーザー情報を取得
   const { user } = useAuth()
@@ -399,6 +402,33 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
     )
   }
 
+  // 削除フラグ設定・取消トグルハンドラ
+  const handleMarkDelete = async () => {
+    const confirmMessage = isDeleteScheduled ? '削除予定をキャンセルしますか？' : 'この部屋を削除しますか？'
+    if (!confirm(confirmMessage)) return
+    try {
+      setIsMarkingDelete(true)
+      const method = isDeleteScheduled ? 'DELETE' : 'POST'
+      const response = await fetch(`/api/properties/${property.id}/delete`, { method })
+      if (!response.ok) throw new Error()
+      setIsDeleteScheduled(prev => !prev)
+      // プロパティの最新情報を取得し、親コンポーネントに更新を通知
+      const propRes = await fetch(`/api/properties/${property.id}`)
+      if (propRes.ok) {
+        const updatedProperty = await propRes.json()
+        onPropertyUpdate && onPropertyUpdate(updatedProperty)
+      }
+      const alertMsg = isDeleteScheduled ? '削除予定をキャンセルしました' : '削除予定を設定しました'
+      alert(alertMsg)
+    } catch (error) {
+      console.error(error)
+      const errorMsg = isDeleteScheduled ? '削除予定のキャンセルに失敗しました' : '削除予定の設定に失敗しました'
+      alert(errorMsg)
+    } finally {
+      setIsMarkingDelete(false)
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
       {/* Header */}
@@ -626,21 +656,33 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
                 onBlur={handleMemoBlur}
                 rows={4}
                 className={`w-full p-2 text-sm border rounded resize-none focus:ring-1 focus:outline-none transition-colors ${
-                  isSaving 
-                    ? 'border-blue-300 focus:ring-blue-400 focus:border-blue-400' 
+                  isSaving
+                    ? 'border-blue-300 focus:ring-blue-400 focus:border-blue-400'
                     : 'border-gray-300 focus:ring-blue-400 focus:border-blue-400'
                 }`}
                 placeholder="メモを入力してください..."
                 disabled={isSaving}
               />
-              
-              {/* 撮影情報表示（撮影済の場合のみ） */}
               {currentStatus === '撮影済' && property.shooting_datetime && property.updated_by && (
                 <div className="mt-2">
                   <p className="text-xs text-gray-500">
-                    撮影日時: {formatShootingDateTime(property.shooting_datetime)} | 
-                    撮影者: {property.updated_by}
+                    撮影日時: {formatShootingDateTime(property.shooting_datetime)} | 撮影者: {property.updated_by}
                   </p>
+                </div>
+              )}
+              {/* 管理者のみ表示: 削除トグルボタン */}
+              {user?.role === 'admin' && (
+                <div className="mt-4">
+                  <button
+                    onClick={handleMarkDelete}
+                    disabled={isMarkingDelete}
+                    className={isDeleteScheduled
+                      ? "w-full border border-gray-300 bg-gray-100 text-gray-600 px-4 py-2 rounded text-sm text-center"
+                      : "w-full border border-red-300 bg-red-50 text-red-600 px-4 py-2 rounded text-sm text-center"
+                    }
+                  >
+                    {isDeleteScheduled ? 'この部屋の削除予定をキャンセルする' : 'この部屋を削除する'}
+                  </button>
                 </div>
               )}
             </div>
@@ -681,6 +723,14 @@ function PropertyDetailCard({ propertyGroup, onClose, onEdit, onBackToProperty, 
   } | null>(null)
   const [isLoadingKeyAgent, setIsLoadingKeyAgent] = useState(false)
   const [isInShootingSchedule, setIsInShootingSchedule] = useState(false)
+
+  // プロパティ状態更新時に選択中ルームを最新情報に同期
+  useEffect(() => {
+    setSelectedRoom(prev => {
+      const updated = propertyGroup.rooms.find(room => room.id === prev.id)
+      return updated || prev
+    })
+  }, [propertyGroup.rooms])
 
   // 撮影予定の状態を確認
   useEffect(() => {
@@ -895,6 +945,23 @@ function PropertyDetailCard({ propertyGroup, onClose, onEdit, onBackToProperty, 
               {rooms.map((room, index) => {
                 const normalizedStatus = room.status === '' || !room.status ? '未撮影' : room.status
                 const isSelected = selectedRoom.id === room.id
+                const isDeletedFlag = (room as any).deleted || false
+                // 削除予定が設定されている部屋は黄色表示
+                if (isDeletedFlag) {
+                  return (
+                    <button
+                      key={`${room.id}-${room.room_number}-${index}`}
+                      onClick={() => setSelectedRoom(room)}
+                      className={`text-sm font-medium px-2 py-0.5 rounded cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? 'text-white bg-yellow-500 ring-2 ring-yellow-300'
+                          : 'text-yellow-700 bg-yellow-100 hover:bg-yellow-200'
+                      }`}
+                    >
+                      {room.room_number}
+                    </button>
+                  )
+                }
                 return (
                   <button
                     key={`${room.id}-${room.room_number}-${index}`}
@@ -1399,8 +1466,16 @@ export default function EnhancedGoogleMap({
     const normalizedStatus = status === '' || !status ? '未撮影' : status
     
     const size = isSelected ? 40 : 32  // サイズを少し大きくする
-    const color = normalizedStatus === '未撮影' ? '#3B82F6' : '#EF4444'  // 未撮影=青、撮影済=赤
-    const shadowColor = normalizedStatus === '未撮影' ? '#1D4ED8' : '#DC2626'
+    // 通常は未撮影=青、撮影済=赤
+    let color = normalizedStatus === '未撮影' ? '#3B82F6' : '#EF4444'
+    let shadowColor = normalizedStatus === '未撮影' ? '#1D4ED8' : '#DC2626'
+    
+    // 削除フラグがある場合は黄色系にする
+    const hasDeleteFlag = propertyGroup?.rooms.some(room => (room as any).deleted) || false
+    if (hasDeleteFlag) {
+      color = '#FACC15'        // 黄
+      shadowColor = '#CA8A04' // 濃い黄
+    }
     
     // 表示用ステータスを変更
     const displayStatus = normalizedStatus === '撮影済み' ? '撮影済' : normalizedStatus

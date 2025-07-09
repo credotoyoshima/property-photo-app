@@ -46,6 +46,7 @@ export default function PropertyDetailPage({ params }: Props) {
   const [editedMemo, setEditedMemo] = useState('')
   const [isSavingMemo, setIsSavingMemo] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [isMarkingDelete, setIsMarkingDelete] = useState(false)
 
   // paramsを解決
   useEffect(() => {
@@ -181,6 +182,23 @@ export default function PropertyDetailPage({ params }: Props) {
   const handleCameraStatusUpdate = (updatedProperty: any) => {
     setProperty(updatedProperty)
     setIsCameraOpen(false)
+  }
+
+  // 削除フラグ設定ハンドラ
+  const handleMarkDelete = async () => {
+    if (!property) return
+    if (!confirm('削除フラグを設定しますか？')) return
+    try {
+      setIsMarkingDelete(true)
+      const response = await fetch(`/api/properties/${property.id}/delete`, { method: 'POST' })
+      if (!response.ok) throw new Error()
+      alert('削除フラグを設定しました')
+    } catch (error) {
+      console.error(error)
+      alert('削除フラグ設定に失敗しました')
+    } finally {
+      setIsMarkingDelete(false)
+    }
   }
 
   if (isLoading) {
@@ -377,6 +395,14 @@ export default function PropertyDetailPage({ params }: Props) {
                       </span>
                     )}
                   </p>
+                </div>
+              )}
+              {/* 削除ボタン */}
+              {!isEditingMemo && property.memo && (
+                <div className="mt-4 text-right">
+                  <Button variant="destructive" size="sm" onClick={handleMarkDelete} disabled={isMarkingDelete}>
+                    🗑️ 削除
+                  </Button>
                 </div>
               )}
             </div>

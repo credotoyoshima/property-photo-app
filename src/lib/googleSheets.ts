@@ -75,7 +75,7 @@ export async function getPropertiesFromSheet() {
     // プロパティシートからデータを取得（全列を取得）
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Properties!A2:Z', // ヘッダー行を除く、全列を取得
+      range: 'Properties!A2:AB', // ヘッダー行を除く、A〜AB列を取得（削除フラグ含む）
     })
 
     const rows = response.data.values || []
@@ -122,6 +122,7 @@ export async function getPropertiesFromSheet() {
         key_rented_by: row[22] || '',                   // W列: key_rented_by
         recruitment_status: row[23] || '',              // X列: recruitment_status
         vacancy_date: row[24] || '',                    // Y列: vacancy_date
+        deleted: row[27] === '✓',                      // AB列: 削除フラグ
         last_updated: getJapanTime(),                   // 計算値（実際の列ではない）- 日本時間に変更
       }
     })
@@ -155,7 +156,7 @@ export async function getPropertyById(propertyId: string) {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `Properties!A${rowNumber}:Z${rowNumber}`,
+      range: `Properties!A${rowNumber}:AB${rowNumber}`,
     })
 
     const rows = response.data.values || []
@@ -204,6 +205,7 @@ export async function getPropertyById(propertyId: string) {
       key_rented_by: row[22] || '',
       recruitment_status: row[23] || '',
       vacancy_date: row[24] || '',
+      deleted: row[27] === '✓',                      // AB列: 削除フラグ
       last_updated: getJapanTime(),
     }
   } catch (error) {
@@ -1163,4 +1165,70 @@ export async function getArchiveDataFromSheet() {
     console.error('Error fetching archive data from Google Sheets:', error)
     throw error
   }
+} 
+
+// 物件に削除フラグを設定（AB列に'✓'をセット）
+export async function markPropertyDeleted(propertyId: string) {
+  const sheets = getGoogleSheetsClient()
+  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
+
+  if (!spreadsheetId) {
+    throw new Error('Spreadsheet ID is not configured')
+  }
+
+  // A列から行番号を取得
+  const idColumn = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Properties!A2:A',
+  })
+  const idRows = idColumn.data.values || []
+  const index = idRows.findIndex(r => r[0] === propertyId)
+  if (index === -1) {
+    throw new Error('Property not found')
+  }
+  const rowNumber = index + 2
+
+  // AB列に '✓' を設定
+  const range = `Properties!AB${rowNumber}`
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['✓']] },
+  })
+
+  return { id: propertyId, deleted: true }
+} 
+
+// 物件の削除予定をキャンセル（AB列を空にする）
+export async function clearPropertyDeleted(propertyId: string) {
+  const sheets = getGoogleSheetsClient()
+  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
+
+  if (!spreadsheetId) {
+    throw new Error('Spreadsheet ID is not configured')
+  }
+
+  // A列から行番号を取得
+  const idColumn = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Properties!A2:A',
+  })
+  const idRows = idColumn.data.values || []
+  const index = idRows.findIndex(r => r[0] === propertyId)
+  if (index === -1) {
+    throw new Error('Property not found')
+  }
+  const rowNumber = index + 2
+
+  // AB列をクリア
+  const range = `Properties!AB${rowNumber}`
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['']] },
+  })
+
+  return { id: propertyId, deleted: false }
 } 

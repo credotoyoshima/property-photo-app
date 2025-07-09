@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 0 // 即座に期限切れ
+      maxAge: 0, // 即座に期限切れ
+      path: '/', // 追加: クッキーのパスをルートに設定
     })
 
     return response
