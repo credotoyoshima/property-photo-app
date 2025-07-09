@@ -108,7 +108,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
   } | null>(null)
   const [isLoadingKeyAgent, setIsLoadingKeyAgent] = useState(false)
   const [isMarkingDelete, setIsMarkingDelete] = useState(false)
-  const [isDeleteScheduled, setIsDeleteScheduled] = useState<boolean>(() => Boolean(property.deleted))
+  const [isDeleteScheduled, setIsDeleteScheduled] = useState<boolean>(property.deleted ?? false)
 
   // ログインユーザー情報を取得
   const { user } = useAuth()
@@ -430,7 +430,7 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col min-h-0">
+    <div className="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -480,8 +480,8 @@ function PropertyEditScreen({ property, onClose, onSave, onPropertyUpdate, onLau
       </div>
 
       {/* Content - フレックスレイアウトで残り領域を使用 */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="p-3 pb-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-3 pb-24">
           <div className="grid grid-cols-1 gap-1 max-w-2xl mx-auto">
             {/* 物件名とステータスを1行に表示 */}
             <div className="bg-gray-50 rounded-lg p-3 mb-1">
